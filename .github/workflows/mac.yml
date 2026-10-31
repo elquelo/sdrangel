@@ -87,16 +87,12 @@ jobs:
   smoke_test_mac:
     name: Smoke test macOS ${{ matrix.arch }}
     needs:
-      - build_mac_x64
       - build_mac_arm64
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: x64
-            runner: macos-15-intel
-            artifact_pattern: sdrangel-*-macx64.dmg
           - arch: arm64
             runner: macos-15
             artifact_pattern: sdrangel-*-macarm64.dmg
