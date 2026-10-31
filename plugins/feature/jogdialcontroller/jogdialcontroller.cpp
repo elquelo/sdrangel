@@ -471,6 +471,10 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
 {
     (void) release;
 
+    // On macOS Qt also sets KeypadModifier on arrow key events, which defeats
+    // the exact modifier comparisons for Key_Up and Key_Down below
+    keyModifiers &= ~Qt::KeypadModifier;
+
     if (key == Qt::Key_C)
     {
         m_deviceElseChannelControl = false;
