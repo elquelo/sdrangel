@@ -21,6 +21,7 @@
 #define INCLUDE_FEATURE_RIGCTLSERVERWORKER_H_
 
 #include <QObject>
+#include <QPointer>
 
 #include "util/message.h"
 #include "util/messagequeue.h"
@@ -115,7 +116,7 @@ private:
     int m_targetBW;
 
     QTcpServer *m_tcpServer;
-    QTcpSocket *m_clientConnection;
+    QPointer<QTcpSocket> m_clientConnection; //!< Nulled automatically when the socket is deleted (deleteLater on disconnect)
 
     WebAPIAdapterInterface *m_webAPIAdapterInterface;
 	MessageQueue m_inputMessageQueue;  //!< Queue for asynchronous inbound communication
