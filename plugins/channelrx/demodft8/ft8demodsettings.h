@@ -108,6 +108,9 @@ public:
     QString m_pskReporterCallsign;
     QString m_pskReporterLocator;
     QString m_pskReporterSoftware;
+    bool m_enableWsjtxUDP;          //!< Send decodes as WSJT-X UDP packets (GridTracker, JTAlert...)
+    QString m_wsjtxUDPAddress;
+    uint16_t m_wsjtxUDPPort;
 
     Serializable *m_channelMarker;
     Serializable *m_spectrumGUI;

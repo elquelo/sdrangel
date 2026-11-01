@@ -558,6 +558,24 @@ void FT8DemodGUI::on_settings_clicked()
             changed = true;
         }
 
+        if (settingsKeys.contains("enableWsjtxUDP"))
+        {
+            m_settings.m_enableWsjtxUDP = settings.m_enableWsjtxUDP;
+            changed = true;
+        }
+
+        if (settingsKeys.contains("wsjtxUDPAddress"))
+        {
+            m_settings.m_wsjtxUDPAddress = settings.m_wsjtxUDPAddress;
+            changed = true;
+        }
+
+        if (settingsKeys.contains("wsjtxUDPPort"))
+        {
+            m_settings.m_wsjtxUDPPort = settings.m_wsjtxUDPPort;
+            changed = true;
+        }
+
         if (settingsKeys.contains("ft8BandPresets"))
         {
             m_settings.m_ft8BandPresets = settings.m_ft8BandPresets;

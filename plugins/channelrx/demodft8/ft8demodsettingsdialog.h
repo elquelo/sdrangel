@@ -68,6 +68,9 @@ private slots:
     void on_pskReporterLocator_editingFinished();
     void on_pskReporterSoftware_editingFinished();
     void on_reportingDefaults_clicked();
+    void on_wsjtxUDPEnable_toggled(bool checked);
+    void on_wsjtxUDPAddress_editingFinished();
+    void on_wsjtxUDPPort_valueChanged(int value);
     void on_addBand_clicked();
     void on_deleteBand_clicked();
     void on_moveBandUp_clicked();

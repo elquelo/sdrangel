@@ -259,6 +259,16 @@ This is the decoding Software name and version as it will be reported in the "Us
 
 Use this push button to revert to default values for the reporting station details.
 
+<h4>WSJT-X UDP output (between C.1.11 and C.1.12)</h4>
+
+The "WSJT-X UDP" group sends the decoded messages as WSJT-X compatible UDP packets so that programs like GridTracker or JTAlert can use the FT8 demodulator as a WSJT-X instance.
+
+  - **Enable**: starts sending. Nothing is sent when it is not checked.
+  - **IP**: destination IP address. The default is 127.0.0.1 (same computer). Use the address of the other computer if the receiving program runs elsewhere.
+  - **Port**: destination UDP port. The default is 2237 which is the WSJT-X default. It must match the "Receive UDP port" of the receiving program (GridTracker: Settings > General > WSJT-X / UDP).
+
+After each decoding period (15 s for FT8, 7.5 s for FT4) a Heartbeat, a Status and one Decode packet per decoded message are sent. The Status packet carries the dial frequency (base frequency of the channel), the mode, and the reporting station callsign and locator of the PSK reporter group (C.1.8 and C.1.9) as "DE" call and grid. The instance identifier is `SDRangel-dXcY` where X is the device set index and Y the channel index. A Close packet is sent when the output is disabled or the channel is removed. Messages that could not be unpacked are not sent. This output is receive only: it does not accept any command from the receiving program.
+
 <h4>C.1.12: Band presets table</h4>
 
 This table shows the band presets values according to FT mode that will appear in (C.5)

@@ -105,6 +105,15 @@ public:
     QString* getPskReporterSoftware();
     void setPskReporterSoftware(QString* psk_reporter_software);
 
+    qint32 getEnableWsjtxUdp();
+    void setEnableWsjtxUdp(qint32 enable_wsjtx_udp);
+
+    QString* getWsjtxUdpAddress();
+    void setWsjtxUdpAddress(QString* wsjtx_udp_address);
+
+    qint32 getWsjtxUdpPort();
+    void setWsjtxUdpPort(qint32 wsjtx_udp_port);
+
     qint32 getRgbColor();
     void setRgbColor(qint32 rgb_color);
 
@@ -201,6 +210,15 @@ private:
 
     QString* psk_reporter_software;
     bool m_psk_reporter_software_isSet;
+
+    qint32 enable_wsjtx_udp;
+    bool m_enable_wsjtx_udp_isSet;
+
+    QString* wsjtx_udp_address;
+    bool m_wsjtx_udp_address_isSet;
+
+    qint32 wsjtx_udp_port;
+    bool m_wsjtx_udp_port_isSet;
 
     qint32 rgb_color;
     bool m_rgb_color_isSet;

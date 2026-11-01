@@ -259,12 +259,27 @@ void FT8DemodBaseband::applySettings(const QStringList& settingsKeys, const FT8D
         m_ft8DemodWorker->setEnablePskReporter(settings.m_enablePSKReporter);
     }
 
-    if ((settingsKeys.contains("pskReporterCallsign") && (settings.m_pskReporterCallsign != m_settings.m_pskReporterCallsign)) || force) {
+    if ((settingsKeys.contains("pskReporterCallsign") && (settings.m_pskReporterCallsign != m_settings.m_pskReporterCallsign)) || force)
+    {
         m_pskReporterWorker->setMyCallsign(settings.m_pskReporterCallsign);
+        m_ft8DemodWorker->setWsjtxUDPReportingStation(settings.m_pskReporterCallsign, settings.m_pskReporterLocator);
     }
 
-    if ((settingsKeys.contains("pskReporterLocator") && (settings.m_pskReporterLocator != m_settings.m_pskReporterLocator)) || force) {
+    if ((settingsKeys.contains("pskReporterLocator") && (settings.m_pskReporterLocator != m_settings.m_pskReporterLocator)) || force)
+    {
         m_pskReporterWorker->setMyLocator(settings.m_pskReporterLocator);
+        m_ft8DemodWorker->setWsjtxUDPReportingStation(settings.m_pskReporterCallsign, settings.m_pskReporterLocator);
+    }
+
+    if ((settingsKeys.contains("enableWsjtxUDP") && (settings.m_enableWsjtxUDP != m_settings.m_enableWsjtxUDP)) || force) {
+        m_ft8DemodWorker->setEnableWsjtxUDP(settings.m_enableWsjtxUDP);
+    }
+
+    if ((settingsKeys.contains("wsjtxUDPAddress") && (settings.m_wsjtxUDPAddress != m_settings.m_wsjtxUDPAddress))
+        || (settingsKeys.contains("wsjtxUDPPort") && (settings.m_wsjtxUDPPort != m_settings.m_wsjtxUDPPort))
+        || force)
+    {
+        m_ft8DemodWorker->setWsjtxUDPDestination(settings.m_wsjtxUDPAddress, settings.m_wsjtxUDPPort);
     }
 
     if ((settingsKeys.contains("pskReporterSoftware") && (settings.m_pskReporterSoftware != m_settings.m_pskReporterSoftware)) || force) {

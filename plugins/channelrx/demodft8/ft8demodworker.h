@@ -20,6 +20,8 @@
 #ifndef INCLUDE_FT8DEMODWORKER_H
 #define INCLUDE_FT8DEMODWORKER_H
 
+#include <atomic>
+
 #include <QObject>
 #include <QSet>
 
@@ -28,6 +30,7 @@
 #include "packing.h"
 
 #include "ft8demodsettings.h"
+#include "wsjtxudpsender.h"
 
 class QDateTime;
 class MessageQueue;
@@ -59,6 +62,9 @@ public:
     void invalidateSequence() { m_invalidSequence = true; }
     void setBaseFrequency(qint64 baseFrequency) { m_baseFrequency = baseFrequency; }
     void setChannel(ChannelAPI *channel) { m_channel = channel; }
+    void setEnableWsjtxUDP(bool enableWsjtxUDP) { m_enableWsjtxUDP = enableWsjtxUDP; }
+    void setWsjtxUDPDestination(const QString& address, quint16 port) { m_wsjtxUdpSender.setDestination(address, port); }
+    void setWsjtxUDPReportingStation(const QString& callsign, const QString& locator) { m_wsjtxUdpSender.setReportingStation(callsign, locator); }
 
 private:
     class FT8Callback : public FT8::CallbackInterface
@@ -121,6 +127,8 @@ private:
     MessageQueue *m_pskReportingMessageQueue;
     ChannelAPI *m_channel;
     QSet<QString> m_validCallsigns;
+    std::atomic<bool> m_enableWsjtxUDP;
+    WsjtxUdpSender m_wsjtxUdpSender; //!< Used from the worker thread only (except configuration setters)
 };
 
 #endif // INCLUDE_FT8DEMODWORKER_H

@@ -39,6 +39,7 @@ struct SDRBASE_API FT8Message
     QString call2;
     QString loc;
     QString decoderInfo;
+    QString text; //!< Full unpacked message text as in WSJT-X (may be empty)
 };
 
 class SDRBASE_API MsgReportFT8Messages : public Message {

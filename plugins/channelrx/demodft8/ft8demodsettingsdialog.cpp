@@ -42,6 +42,13 @@ FT8DemodSettingsDialog::FT8DemodSettingsDialog(FT8DemodSettings& settings, QStri
     ui->reportingStation->setText(m_settings.m_pskReporterCallsign);
     ui->reportingLocator->setText(m_settings.m_pskReporterLocator);
     ui->reportingSoftware->setText(m_settings.m_pskReporterSoftware);
+    ui->wsjtxUDPEnable->setChecked(m_settings.m_enableWsjtxUDP);
+    ui->wsjtxUDPAddress->setText(m_settings.m_wsjtxUDPAddress);
+    ui->wsjtxUDPPort->setValue(m_settings.m_wsjtxUDPPort);
+    // The reporting station slots are not named after their widgets so they are not auto-connected
+    connect(ui->reportingStation, &QLineEdit::editingFinished, this, &FT8DemodSettingsDialog::on_pskReporterCallsign_editingFinished);
+    connect(ui->reportingLocator, &QLineEdit::editingFinished, this, &FT8DemodSettingsDialog::on_pskReporterLocator_editingFinished);
+    connect(ui->reportingSoftware, &QLineEdit::editingFinished, this, &FT8DemodSettingsDialog::on_pskReporterSoftware_editingFinished);
     resizeBandsTable();
     populateBandsTable();
     connect(ui->bands, &QTableWidget::cellChanged, this, &FT8DemodSettingsDialog::textCellChanged);
@@ -236,6 +243,33 @@ void FT8DemodSettingsDialog::on_reportingDefaults_clicked()
 
     if (!m_settingsKeys.contains("pskReporterSoftware")) {
         m_settingsKeys.append("pskReporterSoftware");
+    }
+}
+
+void FT8DemodSettingsDialog::on_wsjtxUDPEnable_toggled(bool checked)
+{
+    m_settings.m_enableWsjtxUDP = checked;
+
+    if (!m_settingsKeys.contains("enableWsjtxUDP")) {
+        m_settingsKeys.append("enableWsjtxUDP");
+    }
+}
+
+void FT8DemodSettingsDialog::on_wsjtxUDPAddress_editingFinished()
+{
+    m_settings.m_wsjtxUDPAddress = ui->wsjtxUDPAddress->text().trimmed();
+
+    if (!m_settingsKeys.contains("wsjtxUDPAddress")) {
+        m_settingsKeys.append("wsjtxUDPAddress");
+    }
+}
+
+void FT8DemodSettingsDialog::on_wsjtxUDPPort_valueChanged(int value)
+{
+    m_settings.m_wsjtxUDPPort = value;
+
+    if (!m_settingsKeys.contains("wsjtxUDPPort")) {
+        m_settingsKeys.append("wsjtxUDPPort");
     }
 }
 
