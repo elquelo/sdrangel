@@ -74,6 +74,9 @@ void FT8DemodSettings::resetToDefaults()
     m_pskReporterCallsign = getDefaultReporterCallsign();
     m_pskReporterLocator = getDefaultReporterLocator();
     m_pskReporterSoftware = "SDRangel FT8 Demod";
+    m_enableWsjtxUDP = false;
+    m_wsjtxUDPAddress = "127.0.0.1";
+    m_wsjtxUDPPort = 2237;
     resetBandPresets(DecoderModeFT8);
     resetBandPresets(DecoderModeFT4);
 }
@@ -216,6 +219,9 @@ QByteArray FT8DemodSettings::serialize() const
     s.writeString(31, m_pskReporterCallsign);
     s.writeString(32, m_pskReporterLocator);
     s.writeString(33, m_pskReporterSoftware);
+    s.writeBool(40, m_enableWsjtxUDP);
+    s.writeString(41, m_wsjtxUDPAddress);
+    s.writeU32(42, m_wsjtxUDPPort);
 
     for (unsigned int i = 0; i <  10; i++)
     {
@@ -315,6 +321,10 @@ bool FT8DemodSettings::deserialize(const QByteArray& data)
         d.readString(31, &m_pskReporterCallsign, getDefaultReporterCallsign());
         d.readString(32, &m_pskReporterLocator, getDefaultReporterLocator());
         d.readString(33, &m_pskReporterSoftware, getDefaultReporterSoftware());
+        d.readBool(40, &m_enableWsjtxUDP, false);
+        d.readString(41, &m_wsjtxUDPAddress, "127.0.0.1");
+        d.readU32(42, &utmp, 2237);
+        m_wsjtxUDPPort = utmp < 65536 ? utmp : 2237;
 
         for (unsigned int i = 0; (i < 10); i++)
         {
@@ -430,6 +440,15 @@ void FT8DemodSettings::applySettings(const QStringList& settingsKeys, const FT8D
     if (settingsKeys.contains("pskReporterSoftware")) {
         m_pskReporterSoftware = settings.m_pskReporterSoftware;
     }
+    if (settingsKeys.contains("enableWsjtxUDP")) {
+        m_enableWsjtxUDP = settings.m_enableWsjtxUDP;
+    }
+    if (settingsKeys.contains("wsjtxUDPAddress")) {
+        m_wsjtxUDPAddress = settings.m_wsjtxUDPAddress;
+    }
+    if (settingsKeys.contains("wsjtxUDPPort")) {
+        m_wsjtxUDPPort = settings.m_wsjtxUDPPort;
+    }
 }
 
 QString FT8DemodSettings::getDebugString(const QStringList& settingsKeys, bool force) const
@@ -516,6 +535,15 @@ QString FT8DemodSettings::getDebugString(const QStringList& settingsKeys, bool f
     }
     if (settingsKeys.contains("pskReporterSoftware") || force) {
         ostr << " m_pskReporterSoftware: " << m_pskReporterSoftware.toStdString();
+    }
+    if (settingsKeys.contains("enableWsjtxUDP") || force) {
+        ostr << " m_enableWsjtxUDP: " << m_enableWsjtxUDP;
+    }
+    if (settingsKeys.contains("wsjtxUDPAddress") || force) {
+        ostr << " m_wsjtxUDPAddress: " << m_wsjtxUDPAddress.toStdString();
+    }
+    if (settingsKeys.contains("wsjtxUDPPort") || force) {
+        ostr << " m_wsjtxUDPPort: " << m_wsjtxUDPPort;
     }
 
     return QString(ostr.str().c_str());

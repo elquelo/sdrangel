@@ -105,6 +105,20 @@ FT8DemodSettings:
     pskReporterSoftware:
       type: string
       description: "Psk reporter software setting for Ft8 demod."
+    enableWsjtxUDP:
+      type: integer
+      minimum: 0
+      maximum: 1
+      description: >
+        Send decoded messages as WSJT-X UDP packets (for GridTracker, JTAlert and similar)
+          * 0 - Disable
+          * 1 - Enable
+    wsjtxUDPAddress:
+      type: string
+      description: "Destination address of the WSJT-X UDP packets."
+    wsjtxUDPPort:
+      type: integer
+      description: "Destination port of the WSJT-X UDP packets."
     rgbColor:
       type: integer
       description: "Display color encoded as an RGB integer."
