@@ -27,6 +27,8 @@
 #include "dsp/dspdevicesinkengine.h"
 #include "dsp/devicesamplesource.h"
 #include "dsp/devicesamplesink.h"
+#include "dsp/dspdevicemimoengine.h"
+#include "dsp/devicesamplemimo.h"
 #include "device/deviceset.h"
 #include "channel/channelapi.h"
 #include "device/deviceapi.h"
@@ -283,17 +285,22 @@ void JogdialController::updateChannels()
     {
         DSPDeviceSourceEngine *deviceSourceEngine =  (*it)->m_deviceSourceEngine;
         DSPDeviceSinkEngine *deviceSinkEngine =  (*it)->m_deviceSinkEngine;
+        DSPDeviceMIMOEngine *deviceMIMOEngine =  (*it)->m_deviceMIMOEngine;
         DeviceAPI *device = (*it)->m_deviceAPI;
         device->getHardwareId();
 
-        if (deviceSourceEngine || deviceSinkEngine)
+        if (deviceSourceEngine || deviceSinkEngine || deviceMIMOEngine)
         {
             for (int chi = 0; chi < (*it)->getNumberOfChannels(); chi++)
             {
                 ChannelAPI *channel = (*it)->getChannelAt(chi);
+                // On a MIMO device set each channel is either Rx or Tx
+                const bool tx = deviceMIMOEngine ?
+                    (channel->getStreamType() == ChannelAPI::StreamSingleSource) :
+                    (deviceSinkEngine != nullptr);
                 JogdialControllerSettings::AvailableChannel availableChannel =
                     JogdialControllerSettings::AvailableChannel{
-                        deviceSinkEngine != nullptr,
+                        tx,
                         deviceIndex,
                         chi,
                         device,
@@ -745,6 +752,25 @@ void JogdialController::stepFrequency(int step)
         {
             DSPDeviceSourceEngine *sourceEngine = m_selectedDevice->getDeviceSourceEngine();
             DSPDeviceSinkEngine *sinkEngine = m_selectedDevice->getDeviceSinkEngine();
+            DSPDeviceMIMOEngine *mimoEngine = m_selectedDevice->getDeviceMIMOEngine();
+
+            if (mimoEngine && mimoEngine->getMIMO())
+            {
+                // MIMO: act on the Rx or Tx stream of the selected channel (stream 0 if no channel is selected)
+                DeviceSampleMIMO *mimo = mimoEngine->getMIMO();
+                const int streamIndex = m_selectedChannel ? m_selectedChannel->getStreamIndex() : 0;
+
+                if (m_selectedChannel && (m_selectedChannel->getStreamType() == ChannelAPI::StreamSingleSource))
+                {
+                    qint64 frequency = mimo->getSinkCenterFrequency(streamIndex);
+                    mimo->setSinkCenterFrequency(frequency + step*1000LL, streamIndex);
+                }
+                else
+                {
+                    qint64 frequency = mimo->getSourceCenterFrequency(streamIndex);
+                    mimo->setSourceCenterFrequency(frequency + step*1000LL, streamIndex);
+                }
+            }
 
             if (sourceEngine)
             {
