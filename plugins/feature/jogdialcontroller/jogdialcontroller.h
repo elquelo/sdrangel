@@ -215,6 +215,9 @@ private:
     void stop();
     void applySettings(const JogdialControllerSettings& settings, const QList<QString>& settingsKeys, bool force = false);
     void updateChannels();
+    bool isDeviceValid(const DeviceAPI *device) const;
+    bool isChannelValid(const ChannelAPI *channel) const;
+    bool dropStaleSelection();
     void channelUp();
     void channelDown();
     void webapiReverseSendSettings(const QList<QString>& featureSettingsKeys, const JogdialControllerSettings& settings, bool force);
