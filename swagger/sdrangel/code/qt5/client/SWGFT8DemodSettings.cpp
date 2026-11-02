@@ -68,6 +68,12 @@ SWGFT8DemodSettings::SWGFT8DemodSettings() {
     m_psk_reporter_locator_isSet = false;
     psk_reporter_software = nullptr;
     m_psk_reporter_software_isSet = false;
+    enable_wsjtx_udp = 0;
+    m_enable_wsjtx_udp_isSet = false;
+    wsjtx_udp_address = nullptr;
+    m_wsjtx_udp_address_isSet = false;
+    wsjtx_udp_port = 0;
+    m_wsjtx_udp_port_isSet = false;
     rgb_color = 0;
     m_rgb_color_isSet = false;
     title = nullptr;
@@ -138,6 +144,12 @@ SWGFT8DemodSettings::init() {
     m_psk_reporter_locator_isSet = false;
     psk_reporter_software = new QString("");
     m_psk_reporter_software_isSet = false;
+    enable_wsjtx_udp = 0;
+    m_enable_wsjtx_udp_isSet = false;
+    wsjtx_udp_address = new QString("");
+    m_wsjtx_udp_address_isSet = false;
+    wsjtx_udp_port = 0;
+    m_wsjtx_udp_port_isSet = false;
     rgb_color = 0;
     m_rgb_color_isSet = false;
     title = new QString("");
@@ -190,6 +202,12 @@ SWGFT8DemodSettings::cleanup() {
     if(psk_reporter_software != nullptr) { 
         delete psk_reporter_software;
     }
+
+
+    if(wsjtx_udp_address != nullptr) { 
+        delete wsjtx_udp_address;
+    }
+
 
     if(title != nullptr) { 
         delete title;
@@ -263,6 +281,12 @@ SWGFT8DemodSettings::fromJsonObject(QJsonObject &pJson) {
     ::SWGSDRangel::setValue(&psk_reporter_locator, pJson["pskReporterLocator"], "QString", "QString");
     
     ::SWGSDRangel::setValue(&psk_reporter_software, pJson["pskReporterSoftware"], "QString", "QString");
+    
+    ::SWGSDRangel::setValue(&enable_wsjtx_udp, pJson["enableWsjtxUDP"], "qint32", "");
+    
+    ::SWGSDRangel::setValue(&wsjtx_udp_address, pJson["wsjtxUDPAddress"], "QString", "QString");
+    
+    ::SWGSDRangel::setValue(&wsjtx_udp_port, pJson["wsjtxUDPPort"], "qint32", "");
     
     ::SWGSDRangel::setValue(&rgb_color, pJson["rgbColor"], "qint32", "");
     
@@ -361,6 +385,15 @@ SWGFT8DemodSettings::asJsonObject() {
     }
     if(psk_reporter_software != nullptr && *psk_reporter_software != QString("")){
         toJsonValue(QString("pskReporterSoftware"), psk_reporter_software, obj, QString("QString"));
+    }
+    if(m_enable_wsjtx_udp_isSet){
+        obj->insert("enableWsjtxUDP", QJsonValue(enable_wsjtx_udp));
+    }
+    if(wsjtx_udp_address != nullptr && *wsjtx_udp_address != QString("")){
+        toJsonValue(QString("wsjtxUDPAddress"), wsjtx_udp_address, obj, QString("QString"));
+    }
+    if(m_wsjtx_udp_port_isSet){
+        obj->insert("wsjtxUDPPort", QJsonValue(wsjtx_udp_port));
     }
     if(m_rgb_color_isSet){
         obj->insert("rgbColor", QJsonValue(rgb_color));
@@ -600,6 +633,36 @@ SWGFT8DemodSettings::setPskReporterSoftware(QString* psk_reporter_software) {
 }
 
 qint32
+SWGFT8DemodSettings::getEnableWsjtxUdp() {
+    return enable_wsjtx_udp;
+}
+void
+SWGFT8DemodSettings::setEnableWsjtxUdp(qint32 enable_wsjtx_udp) {
+    this->enable_wsjtx_udp = enable_wsjtx_udp;
+    this->m_enable_wsjtx_udp_isSet = true;
+}
+
+QString*
+SWGFT8DemodSettings::getWsjtxUdpAddress() {
+    return wsjtx_udp_address;
+}
+void
+SWGFT8DemodSettings::setWsjtxUdpAddress(QString* wsjtx_udp_address) {
+    this->wsjtx_udp_address = wsjtx_udp_address;
+    this->m_wsjtx_udp_address_isSet = true;
+}
+
+qint32
+SWGFT8DemodSettings::getWsjtxUdpPort() {
+    return wsjtx_udp_port;
+}
+void
+SWGFT8DemodSettings::setWsjtxUdpPort(qint32 wsjtx_udp_port) {
+    this->wsjtx_udp_port = wsjtx_udp_port;
+    this->m_wsjtx_udp_port_isSet = true;
+}
+
+qint32
 SWGFT8DemodSettings::getRgbColor() {
     return rgb_color;
 }
@@ -772,6 +835,15 @@ SWGFT8DemodSettings::isSet(){
             isObjectUpdated = true; break;
         }
         if(psk_reporter_software && *psk_reporter_software != QString("")){
+            isObjectUpdated = true; break;
+        }
+        if(m_enable_wsjtx_udp_isSet){
+            isObjectUpdated = true; break;
+        }
+        if(wsjtx_udp_address && *wsjtx_udp_address != QString("")){
+            isObjectUpdated = true; break;
+        }
+        if(m_wsjtx_udp_port_isSet){
             isObjectUpdated = true; break;
         }
         if(m_rgb_color_isSet){

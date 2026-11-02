@@ -490,6 +490,20 @@ void FT8Demod::webapiUpdateChannelSettings(
     if (channelSettingsKeys.contains("pskReporterSoftware")) {
         settings.m_pskReporterSoftware = *response.getFt8DemodSettings()->getPskReporterSoftware();
     }
+    if (channelSettingsKeys.contains("enableWsjtxUDP")) {
+        settings.m_enableWsjtxUDP = response.getFt8DemodSettings()->getEnableWsjtxUdp() != 0;
+    }
+    if (channelSettingsKeys.contains("wsjtxUDPAddress")) {
+        settings.m_wsjtxUDPAddress = *response.getFt8DemodSettings()->getWsjtxUdpAddress();
+    }
+    if (channelSettingsKeys.contains("wsjtxUDPPort"))
+    {
+        int port = response.getFt8DemodSettings()->getWsjtxUdpPort();
+
+        if ((port >= 1) && (port <= 65535)) {
+            settings.m_wsjtxUDPPort = port;
+        }
+    }
     if (channelSettingsKeys.contains("rgbColor")) {
         settings.m_rgbColor = response.getFt8DemodSettings()->getRgbColor();
     }
@@ -570,6 +584,13 @@ void FT8Demod::webapiFormatChannelSettings(SWGSDRangel::SWGChannelSettings& resp
     } else {
         response.getFt8DemodSettings()->setPskReporterSoftware(new QString(settings.m_pskReporterSoftware));
     }
+    response.getFt8DemodSettings()->setEnableWsjtxUdp(settings.m_enableWsjtxUDP ? 1 : 0);
+    if (response.getFt8DemodSettings()->getWsjtxUdpAddress()) {
+        *response.getFt8DemodSettings()->getWsjtxUdpAddress() = settings.m_wsjtxUDPAddress;
+    } else {
+        response.getFt8DemodSettings()->setWsjtxUdpAddress(new QString(settings.m_wsjtxUDPAddress));
+    }
+    response.getFt8DemodSettings()->setWsjtxUdpPort(settings.m_wsjtxUDPPort);
     response.getFt8DemodSettings()->setRgbColor(settings.m_rgbColor);
 
     if (response.getFt8DemodSettings()->getTitle()) {
@@ -792,6 +813,19 @@ void FT8Demod::webapiFormatChannelSettings(
         } else {
             swgFT8DemodSettings->setPskReporterSoftware(new QString(settings.m_pskReporterSoftware));
         }
+    }
+    if (channelSettingsKeys.contains("enableWsjtxUDP") || force) {
+        swgFT8DemodSettings->setEnableWsjtxUdp(settings.m_enableWsjtxUDP ? 1 : 0);
+    }
+    if (channelSettingsKeys.contains("wsjtxUDPAddress") || force) {
+        if (swgFT8DemodSettings->getWsjtxUdpAddress()) {
+            *swgFT8DemodSettings->getWsjtxUdpAddress() = settings.m_wsjtxUDPAddress;
+        } else {
+            swgFT8DemodSettings->setWsjtxUdpAddress(new QString(settings.m_wsjtxUDPAddress));
+        }
+    }
+    if (channelSettingsKeys.contains("wsjtxUDPPort") || force) {
+        swgFT8DemodSettings->setWsjtxUdpPort(settings.m_wsjtxUDPPort);
     }
     if (channelSettingsKeys.contains("rgbColor") || force) {
         swgFT8DemodSettings->setRgbColor(settings.m_rgbColor);

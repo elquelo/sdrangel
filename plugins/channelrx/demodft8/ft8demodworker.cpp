@@ -100,7 +100,8 @@ int FT8DemodWorker::FT8Callback::hcb(
         QString(call1.c_str()).simplified(),
         call2Str,
         QString(loc.c_str()).simplified(),
-        info
+        info,
+        QString()
     };
 
     // DXpedition packs two messages in one with the two callees in the first call area separated by a semicolon
@@ -121,6 +122,7 @@ int FT8DemodWorker::FT8Callback::hcb(
     }
     else
     {
+        baseMessage.text = QString(msg.c_str()).simplified();
         ft8Messages.push_back(baseMessage);
     }
 
@@ -152,7 +154,8 @@ FT8DemodWorker::FT8DemodWorker() :
     m_baseFrequency(0),
     m_guiReportingMessageQueue(nullptr),
     m_pskReportingMessageQueue(nullptr),
-    m_channel(nullptr)
+    m_channel(nullptr),
+    m_enableWsjtxUDP(false)
 {
     QString relPath = "ft8/save";
     QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
@@ -307,6 +310,22 @@ void FT8DemodWorker::processBuffer(int16_t *buffer, QDateTime periodTS)
 
     if (m_enablePskReporter && m_pskReportingMessageQueue) {
         m_pskReportingMessageQueue->push(new MsgReportFT8Messages(*ft8Callback.getReportMessage()));
+    }
+
+    if (m_enableWsjtxUDP)
+    {
+        // Instance id: this lets the receiving program tell several channels apart
+        m_wsjtxUdpSender.setInstanceId(tr("SDRangel-%1").arg(channelReference));
+        m_wsjtxUdpSender.sendPeriod(
+            periodTS,
+            m_baseFrequency,
+            m_decoderMode,
+            ft8Callback.getReportMessage()->getFT8Messages()
+        );
+    }
+    else
+    {
+        m_wsjtxUdpSender.sendClose(); // no-op unless something was sent before
     }
 
     QList<ObjectPipe*> mapPipes;

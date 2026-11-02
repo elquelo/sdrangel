@@ -10,6 +10,7 @@ set(demodft8_SOURCES
     ft8buffer.cpp
     ft8demodworker.cpp
     pskreporterworker.cpp
+    wsjtxudpsender.cpp
 )
 
 set(demodft8_HEADERS
@@ -22,6 +23,8 @@ set(demodft8_HEADERS
     ft8buffer.h
     ft8demodworker.h
     pskreporterworker.h
+    wsjtxudpsender.h
+    wsjtxudpencoder.h
 )
 
 include_directories(
