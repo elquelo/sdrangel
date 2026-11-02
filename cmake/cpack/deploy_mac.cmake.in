@@ -45,7 +45,13 @@ endforeach()
 
 # Run macdeployqt which should copy all libraries and frameworks and Qt plugins and qml
 message ("Running macdeployqt in ${CPACK_TEMPORARY_INSTALL_DIRECTORY}")
-execute_process ( COMMAND macdeployqt ${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app -always-overwrite -verbose=1 -qmldir=@CMAKE_CURRENT_SOURCE_DIR@/../../plugins/ )
+# The VST3 scanner is not the main executable: macdeployqt must be told about it or its Qt install names are left
+# pointing to the build machine Qt (dyld "Library not loaded" at launch)
+set (MACDEPLOYQT_EXTRA_ARGS "")
+if(EXISTS "${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app/Contents/MacOS/sdrangel-vst3-scan")
+  list (APPEND MACDEPLOYQT_EXTRA_ARGS "-executable=${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app/Contents/MacOS/sdrangel-vst3-scan")
+endif()
+execute_process ( COMMAND macdeployqt ${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app -always-overwrite -verbose=1 -qmldir=@CMAKE_CURRENT_SOURCE_DIR@/../../plugins/ ${MACDEPLOYQT_EXTRA_ARGS} )
 
 # macdeployqt corrupts libusb signature, so resign it. See: https://github.com/f4exb/sdrangel/issues/2524
 execute_process ( COMMAND echo "resigning" )
