@@ -27,6 +27,8 @@
 #include "dsp/dspdevicesinkengine.h"
 #include "dsp/devicesamplesource.h"
 #include "dsp/devicesamplesink.h"
+#include "dsp/dspdevicemimoengine.h"
+#include "dsp/devicesamplemimo.h"
 #include "device/deviceset.h"
 #include "channel/channelapi.h"
 #include "device/deviceapi.h"
@@ -128,6 +130,19 @@ bool JogdialController::handleMessage(const Message& cmd)
         {
             DeviceAPI *selectedDevice = m_availableChannels[cfg.getIndex()].m_deviceAPI;
             ChannelAPI *selectedChannel = m_availableChannels[cfg.getIndex()].m_channelAPI;
+
+            // The list is only refreshed on demand so the device or the channel may have been removed since.
+            // Never dereference them before checking they still exist.
+            if (!isDeviceValid(selectedDevice) || !isChannelValid(selectedChannel))
+            {
+                qWarning("JogdialController::handleMessage: MsgSelectChannel: stale selection (device or channel removed): refreshing");
+                m_selectedDevice = nullptr;
+                m_selectedChannel = nullptr;
+                m_selectedIndex = -1;
+                updateChannels();
+                return true;
+            }
+
             qDebug() << "JogdialController::handleMessage: MsgSelectChannel"
                 << "device:" << selectedDevice->getHardwareId()
                 << "channel:" << selectedChannel->getIdentifier();
@@ -191,8 +206,74 @@ void JogdialController::applySettings(const JogdialControllerSettings& settings,
     }
 }
 
+bool JogdialController::isDeviceValid(const DeviceAPI *device) const
+{
+    if (!device) {
+        return false;
+    }
+
+    const std::vector<DeviceSet*>& deviceSets = MainCore::instance()->getDeviceSets();
+
+    for (const DeviceSet *deviceSet : deviceSets)
+    {
+        if (deviceSet->m_deviceAPI == device) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool JogdialController::isChannelValid(const ChannelAPI *channel) const
+{
+    if (!channel) {
+        return false;
+    }
+
+    const std::vector<DeviceSet*>& deviceSets = MainCore::instance()->getDeviceSets();
+
+    for (DeviceSet *deviceSet : deviceSets)
+    {
+        for (int chi = 0; chi < deviceSet->getNumberOfChannels(); chi++)
+        {
+            if (deviceSet->getChannelAt(chi) == channel) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+//! Forget the selected device and channel if they no longer exist. Returns true if something was dropped.
+bool JogdialController::dropStaleSelection()
+{
+    bool dropped = false;
+
+    if (m_selectedDevice && !isDeviceValid(m_selectedDevice))
+    {
+        m_selectedDevice = nullptr;
+        dropped = true;
+    }
+
+    if (m_selectedChannel && !isChannelValid(m_selectedChannel))
+    {
+        m_selectedChannel = nullptr;
+        dropped = true;
+    }
+
+    if (dropped)
+    {
+        qWarning("JogdialController::dropStaleSelection: selected device or channel was removed");
+        m_selectedIndex = -1;
+    }
+
+    return dropped;
+}
+
 void JogdialController::updateChannels()
 {
+    dropStaleSelection();
     MainCore *mainCore = MainCore::instance();
     std::vector<DeviceSet*>& deviceSets = mainCore->getDeviceSets();
     std::vector<DeviceSet*>::const_iterator it = deviceSets.begin();
@@ -204,17 +285,22 @@ void JogdialController::updateChannels()
     {
         DSPDeviceSourceEngine *deviceSourceEngine =  (*it)->m_deviceSourceEngine;
         DSPDeviceSinkEngine *deviceSinkEngine =  (*it)->m_deviceSinkEngine;
+        DSPDeviceMIMOEngine *deviceMIMOEngine =  (*it)->m_deviceMIMOEngine;
         DeviceAPI *device = (*it)->m_deviceAPI;
         device->getHardwareId();
 
-        if (deviceSourceEngine || deviceSinkEngine)
+        if (deviceSourceEngine || deviceSinkEngine || deviceMIMOEngine)
         {
             for (int chi = 0; chi < (*it)->getNumberOfChannels(); chi++)
             {
                 ChannelAPI *channel = (*it)->getChannelAt(chi);
+                // On a MIMO device set each channel is either Rx or Tx
+                const bool tx = deviceMIMOEngine ?
+                    (channel->getStreamType() == ChannelAPI::StreamSingleSource) :
+                    (deviceSinkEngine != nullptr);
                 JogdialControllerSettings::AvailableChannel availableChannel =
                     JogdialControllerSettings::AvailableChannel{
-                        deviceSinkEngine != nullptr,
+                        tx,
                         deviceIndex,
                         chi,
                         device,
@@ -224,6 +310,18 @@ void JogdialController::updateChannels()
                     };
                 m_availableChannels.push_back(availableChannel);
             }
+        }
+    }
+
+    // The list has been rebuilt: find again the selected channel in it, if it still exists
+    m_selectedIndex = -1;
+
+    for (int i = 0; i < m_availableChannels.size(); i++)
+    {
+        if (m_selectedChannel && (m_availableChannels.at(i).m_channelAPI == m_selectedChannel))
+        {
+            m_selectedIndex = i;
+            break;
         }
     }
 
@@ -248,6 +346,17 @@ void JogdialController::channelUp()
         m_selectedIndex = 0;
     }
 
+    if (!isDeviceValid(m_availableChannels.at(m_selectedIndex).m_deviceAPI) ||
+        !isChannelValid(m_availableChannels.at(m_selectedIndex).m_channelAPI))
+    {
+        // stale entry: some channel was removed since the last refresh
+        m_selectedDevice = nullptr;
+        m_selectedChannel = nullptr;
+        m_selectedIndex = -1;
+        updateChannels();
+        return;
+    }
+
     m_selectedDevice = m_availableChannels.at(m_selectedIndex).m_deviceAPI;
     m_selectedChannel =  m_availableChannels.at(m_selectedIndex).m_channelAPI;
 
@@ -268,6 +377,17 @@ void JogdialController::channelDown()
 
     if (m_selectedIndex < 0) {
         m_selectedIndex = m_availableChannels.size() - 1;
+    }
+
+    if (!isDeviceValid(m_availableChannels.at(m_selectedIndex).m_deviceAPI) ||
+        !isChannelValid(m_availableChannels.at(m_selectedIndex).m_channelAPI))
+    {
+        // stale entry: some channel was removed since the last refresh
+        m_selectedDevice = nullptr;
+        m_selectedChannel = nullptr;
+        m_selectedIndex = -1;
+        updateChannels();
+        return;
     }
 
     m_selectedDevice = m_availableChannels.at(m_selectedIndex).m_deviceAPI;
@@ -471,6 +591,10 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
 {
     (void) release;
 
+    // On macOS Qt also sets KeypadModifier on arrow key events, which defeats
+    // the exact modifier comparisons for Key_Up and Key_Down below
+    keyModifiers &= ~Qt::KeypadModifier;
+
     if (key == Qt::Key_C)
     {
         m_deviceElseChannelControl = false;
@@ -605,6 +729,10 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
 
 void JogdialController::resetChannelFrequency()
 {
+    if (dropStaleSelection()) {
+        updateChannels();
+    }
+
     if (m_selectedChannel) {
         m_selectedChannel->setCenterFrequency(0);
     }
@@ -613,12 +741,36 @@ void JogdialController::resetChannelFrequency()
 void JogdialController::stepFrequency(int step)
 {
     qDebug("JogdialController::stepFrequency: step: %d", step);
+
+    if (dropStaleSelection()) {
+        updateChannels();
+    }
+
     if (m_deviceElseChannelControl)
     {
         if (m_selectedDevice)
         {
             DSPDeviceSourceEngine *sourceEngine = m_selectedDevice->getDeviceSourceEngine();
             DSPDeviceSinkEngine *sinkEngine = m_selectedDevice->getDeviceSinkEngine();
+            DSPDeviceMIMOEngine *mimoEngine = m_selectedDevice->getDeviceMIMOEngine();
+
+            if (mimoEngine && mimoEngine->getMIMO())
+            {
+                // MIMO: act on the Rx or Tx stream of the selected channel (stream 0 if no channel is selected)
+                DeviceSampleMIMO *mimo = mimoEngine->getMIMO();
+                const int streamIndex = m_selectedChannel ? m_selectedChannel->getStreamIndex() : 0;
+
+                if (m_selectedChannel && (m_selectedChannel->getStreamType() == ChannelAPI::StreamSingleSource))
+                {
+                    qint64 frequency = mimo->getSinkCenterFrequency(streamIndex);
+                    mimo->setSinkCenterFrequency(frequency + step*1000LL, streamIndex);
+                }
+                else
+                {
+                    qint64 frequency = mimo->getSourceCenterFrequency(streamIndex);
+                    mimo->setSourceCenterFrequency(frequency + step*1000LL, streamIndex);
+                }
+            }
 
             if (sourceEngine)
             {

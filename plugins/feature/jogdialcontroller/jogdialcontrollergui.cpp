@@ -292,6 +292,9 @@ void JogdialControllerGUI::on_startStop_toggled(bool checked)
     {
         setFocus();
         setFocusPolicy(Qt::StrongFocus);
+        // The captured keys must not be passed on, else they also reach the widgets
+        // that contain this one (for example arrow keys scrolling the window)
+        m_commandKeyReceiver.setPass(false);
         connect(&m_commandKeyReceiver, SIGNAL(capturedKey(Qt::Key, Qt::KeyboardModifiers, bool)),
             m_jogdialController, SLOT(commandKeyPressed(Qt::Key, Qt::KeyboardModifiers, bool)));
     }
@@ -299,6 +302,7 @@ void JogdialControllerGUI::on_startStop_toggled(bool checked)
     {
         disconnect(&m_commandKeyReceiver, SIGNAL(capturedKey(Qt::Key, Qt::KeyboardModifiers, bool)),
             m_jogdialController, SLOT(commandKeyPressed(Qt::Key, Qt::KeyboardModifiers, bool)));
+        m_commandKeyReceiver.setPass(true);
         setFocusPolicy(Qt::NoFocus);
         clearFocus();
     }
