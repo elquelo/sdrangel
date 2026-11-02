@@ -146,8 +146,8 @@ void RigCtlServerWorker::restartServer(bool enabled, uint32_t port)
         if (m_clientConnection)
         {
             m_clientConnection->close();
-            delete m_clientConnection;
-            m_clientConnection = nullptr;
+            delete m_clientConnection.data();
+            m_clientConnection.clear();
         }
 
         disconnect(m_tcpServer, &QTcpServer::newConnection, this, &RigCtlServerWorker::acceptConnection);
@@ -197,6 +197,10 @@ void RigCtlServerWorker::getCommand()
     std::fill(response, response + m_ResponseLength, '\0');
 
     // Get rigctld command from client
+    if (!m_clientConnection) { // the client socket was deleted on disconnection
+        return;
+    }
+
     len = m_clientConnection->readLine(cmd, sizeof(cmd));
 
     if (len != -1)
