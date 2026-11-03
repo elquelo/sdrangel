@@ -5292,6 +5292,8 @@ void GLSpectrumView::setFrequencyZooming(float frequencyZoomFactor, float freque
 
 void GLSpectrumView::zoomFrequencyBy(float ratio)
 {
+    QMutexLocker mutexLocker(&m_mutex); // Lock to ensure we don't try to redraw mid calculation of zoom and fftMin/fftMax
+
     m_frequencyZoomFactor *= ratio;
     m_frequencyZoomFactor = std::min(m_frequencyZoomFactor, m_maxFrequencyZoom);
     m_frequencyZoomFactor = std::max(m_frequencyZoomFactor, 1.0f);
@@ -5301,19 +5303,57 @@ void GLSpectrumView::zoomFrequencyBy(float ratio)
     frequencyZoom(std::max(lim, std::min(m_frequencyZoomPos, 1.0f - lim)));
 }
 
+void GLSpectrumView::zoomFrequencyBy(float ratio, qint64 frequencyOffset)
+{
+    QMutexLocker mutexLocker(&m_mutex); // Lock to ensure we don't try to redraw mid calculation of zoom and fftMin/fftMax
+
+    // Like zooming with the mouse wheel but the frequency to keep in place is given instead of the one under the cursor
+    int adjSampleRate = m_ssbSpectrum ? getDisplayedSampleRate()/2 : getDisplayedSampleRate();
+    qint64 adjCenterFrequency = getDisplayedCenterFrequency() + (m_ssbSpectrum ? getDisplayedSampleRate()/4 : 0);
+
+    if (adjSampleRate <= 0) {
+        return;
+    }
+
+    const double zoomFreq = getDisplayedCenterFrequency() + frequencyOffset;
+    const double currentCF = (m_frequencyZoomFactor == 1.0f) ?
+        adjCenterFrequency : (m_frequencyZoomPos - 0.5) * adjSampleRate + adjCenterFrequency;
+    const double freqDiffZoom1 = (currentCF - zoomFreq) * m_frequencyZoomFactor;
+
+    const float oldFactor = m_frequencyZoomFactor;
+    m_frequencyZoomFactor *= ratio;
+    m_frequencyZoomFactor = std::min(m_frequencyZoomFactor, m_maxFrequencyZoom);
+    m_frequencyZoomFactor = std::max(m_frequencyZoomFactor, 1.0f);
+
+    if (m_frequencyZoomFactor == oldFactor) { // already at the limit
+        return;
+    }
+
+    const double zoomedCF = zoomFreq + freqDiffZoom1 / m_frequencyZoomFactor;
+    const float lim = 0.5f / m_frequencyZoomFactor;
+    const float zoomPos = (zoomedCF - adjCenterFrequency) / adjSampleRate + 0.5;
+    frequencyZoom(std::max(lim, std::min(zoomPos, 1.0f - lim)));
+}
+
 void GLSpectrumView::panFrequencyBy(float fraction)
 {
+    QMutexLocker mutexLocker(&m_mutex);
+
     if (m_frequencyZoomFactor == 1.0f) { // the whole span is displayed: nothing to move
         return;
     }
 
     float lim = 0.5f / m_frequencyZoomFactor;
     float pos = m_frequencyZoomPos + fraction / m_frequencyZoomFactor;
+    qDebug("GLSpectrumView::panFrequencyBy: fraction: %f factor: %f pos: %f -> %f",
+        fraction, m_frequencyZoomFactor, m_frequencyZoomPos, std::max(lim, std::min(pos, 1.0f - lim)));
     frequencyZoom(std::max(lim, std::min(pos, 1.0f - lim)));
 }
 
 void GLSpectrumView::resetFrequencyZooming()
 {
+    QMutexLocker mutexLocker(&m_mutex);
+
     resetFrequencyZoom();
     m_displayChanged = true;
 }

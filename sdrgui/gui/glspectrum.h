@@ -132,6 +132,7 @@ public:
     bool isDeviceSpectrum() const { return m_spectrum->isDeviceSpectrum(); }
     void setFrequencyZooming(float frequencyZoomFactor, float frequencyZoomPos) { m_spectrum->setFrequencyZooming(frequencyZoomFactor, frequencyZoomPos); }
     void zoomFrequencyBy(float ratio) { m_spectrum->zoomFrequencyBy(ratio); }
+    void zoomFrequencyBy(float ratio, qint64 frequencyOffset) { m_spectrum->zoomFrequencyBy(ratio, frequencyOffset); }
     void panFrequencyBy(float fraction) { m_spectrum->panFrequencyBy(fraction); }
     void resetFrequencyZooming() { m_spectrum->resetFrequencyZooming(); }
     void setScrolling(bool enabled, int length) { m_spectrum->setScrolling(enabled, length); }
