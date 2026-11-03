@@ -5290,6 +5290,34 @@ void GLSpectrumView::setFrequencyZooming(float frequencyZoomFactor, float freque
     frequencyZoom(frequencyZoomPos);
 }
 
+void GLSpectrumView::zoomFrequencyBy(float ratio)
+{
+    m_frequencyZoomFactor *= ratio;
+    m_frequencyZoomFactor = std::min(m_frequencyZoomFactor, m_maxFrequencyZoom);
+    m_frequencyZoomFactor = std::max(m_frequencyZoomFactor, 1.0f);
+
+    // The window must stay inside the span: the limit depends on the new zoom factor
+    float lim = 0.5f / m_frequencyZoomFactor;
+    frequencyZoom(std::max(lim, std::min(m_frequencyZoomPos, 1.0f - lim)));
+}
+
+void GLSpectrumView::panFrequencyBy(float fraction)
+{
+    if (m_frequencyZoomFactor == 1.0f) { // the whole span is displayed: nothing to move
+        return;
+    }
+
+    float lim = 0.5f / m_frequencyZoomFactor;
+    float pos = m_frequencyZoomPos + fraction / m_frequencyZoomFactor;
+    frequencyZoom(std::max(lim, std::min(pos, 1.0f - lim)));
+}
+
+void GLSpectrumView::resetFrequencyZooming()
+{
+    resetFrequencyZoom();
+    m_displayChanged = true;
+}
+
 void GLSpectrumView::setReferenceLevelRange(Real minReferenceLevel, Real maxReferenceLevel)
 {
     m_minReferenceLevel = minReferenceLevel;
