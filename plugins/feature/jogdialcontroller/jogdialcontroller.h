@@ -165,7 +165,7 @@ public:
 
     public:
         enum Action {
-            ZoomBy,   //!< Multiply the frequency zoom factor by the value
+            ZoomBy,   //!< Multiply the frequency zoom factor by the value, keeping the frequency offset in place if there is one
             PanBy,    //!< Move the zoomed window by the value (fraction of its width)
             ResetZoom //!< Back to the full span (the value is not used)
         };
@@ -173,21 +173,32 @@ public:
         int getDeviceSetIndex() const { return m_deviceSetIndex; }
         Action getAction() const { return m_action; }
         float getValue() const { return m_value; }
+        bool hasFrequencyOffset() const { return m_hasFrequencyOffset; }
+        qint64 getFrequencyOffset() const { return m_frequencyOffset; }
 
         static MsgControlSpectrum* create(int deviceSetIndex, Action action, float value) {
-            return new MsgControlSpectrum(deviceSetIndex, action, value);
+            return new MsgControlSpectrum(deviceSetIndex, action, value, false, 0);
+        }
+
+        //! Frequency offset from the device center that stays in place when zooming (the selected channel)
+        static MsgControlSpectrum* create(int deviceSetIndex, Action action, float value, qint64 frequencyOffset) {
+            return new MsgControlSpectrum(deviceSetIndex, action, value, true, frequencyOffset);
         }
 
     protected:
         int m_deviceSetIndex;
         Action m_action;
         float m_value;
+        bool m_hasFrequencyOffset;
+        qint64 m_frequencyOffset;
 
-        MsgControlSpectrum(int deviceSetIndex, Action action, float value) :
+        MsgControlSpectrum(int deviceSetIndex, Action action, float value, bool hasFrequencyOffset, qint64 frequencyOffset) :
             Message(),
             m_deviceSetIndex(deviceSetIndex),
             m_action(action),
-            m_value(value)
+            m_value(value),
+            m_hasFrequencyOffset(hasFrequencyOffset),
+            m_frequencyOffset(frequencyOffset)
         { }
     };
 

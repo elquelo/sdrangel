@@ -849,12 +849,13 @@ void JogdialController::panSpectrum(int step)
         position++;
     }
 
-    // From 0.5% to 32% of the displayed window width at each repeat
-    const float fraction = 0.005f * (1 << position);
+    // From 1% to 64% of the displayed window width at each repeat
+    const float fraction = 0.01f * (1 << position);
     controlSpectrum(MsgControlSpectrum::PanBy, (step > 0) ? fraction : -fraction);
 }
 
-//! Send the zoom or pan command to the GUI that owns the spectrum of the device set of the selected channel
+//! Send the zoom or pan command to the GUI that owns the spectrum of the device set of the selected channel.
+//! A zoom keeps the frequency of the selected channel in place on the spectrum
 void JogdialController::controlSpectrum(MsgControlSpectrum::Action action, float value)
 {
     if (dropStaleSelection()) {
@@ -867,7 +868,11 @@ void JogdialController::controlSpectrum(MsgControlSpectrum::Action action, float
         return;
     }
 
-    getMessageQueueToGUI()->push(MsgControlSpectrum::create(deviceSetIndex, action, value));
+    if ((action == MsgControlSpectrum::ZoomBy) && m_selectedChannel) {
+        getMessageQueueToGUI()->push(MsgControlSpectrum::create(deviceSetIndex, action, value, m_selectedChannel->getCenterFrequency()));
+    } else {
+        getMessageQueueToGUI()->push(MsgControlSpectrum::create(deviceSetIndex, action, value));
+    }
 }
 
 void JogdialController::setControlMode(ControlMode controlMode)

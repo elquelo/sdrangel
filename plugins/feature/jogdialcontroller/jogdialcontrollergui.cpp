@@ -123,9 +123,15 @@ bool JogdialControllerGUI::handleMessage(const Message& message)
         {
             GLSpectrum *spectrum = deviceUISets[deviceSetIndex]->getSpectrum();
 
-            if (cmd.getAction() == JogdialController::MsgControlSpectrum::ZoomBy) {
-                spectrum->zoomFrequencyBy(cmd.getValue());
-            } else if (cmd.getAction() == JogdialController::MsgControlSpectrum::PanBy) {
+            if (cmd.getAction() == JogdialController::MsgControlSpectrum::ZoomBy)
+            {
+                if (cmd.hasFrequencyOffset()) {
+                    spectrum->zoomFrequencyBy(cmd.getValue(), cmd.getFrequencyOffset());
+                } else {
+                    spectrum->zoomFrequencyBy(cmd.getValue());
+                }
+            }
+            else if (cmd.getAction() == JogdialController::MsgControlSpectrum::PanBy) {
                 spectrum->panFrequencyBy(cmd.getValue());
             } else {
                 spectrum->resetFrequencyZooming();
