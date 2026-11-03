@@ -22,6 +22,8 @@ Use this toggle to activate or deactivate the plugin. Note that for the control 
 
 This indicator turns green if the plugin has focus. To set the focus on the plugin just click anywhere on it. The controls are effective only if the plugin has focus.
 
+The refresh button (3) and the channel selection combo box (4) do not take the focus when clicked: using them does not interrupt the control. Clicking on any other part of SDRangel (spectrum, other windows) moves the focus away and you need to click on the plugin again.
+
 <h3>3: Refresh channels list</h3>
 
 Use this button to refresh the list of available channels. It will scan through all the device sets presents in the instance to list their channels in the combo box next (4).
