@@ -40,6 +40,13 @@ class JogdialController : public Feature
 {
 	Q_OBJECT
 public:
+    //! What the jog wheel and the shuttle wheel act on
+    enum class ControlMode {
+        Device,  //!< Center frequency of the device of the selected channel
+        Channel, //!< Frequency offset of the selected channel
+        Spectrum //!< Frequency zoom (jog) and pan (shuttle) of the spectrum of the device set of the selected channel
+    };
+
     class MsgConfigureJogdialController : public Message {
         MESSAGE_CLASS_DECLARATION
 
@@ -138,18 +145,49 @@ public:
         MESSAGE_CLASS_DECLARATION
 
     public:
-        bool getDeviceElseChannel() const { return m_deviceElseChannel; }
+        ControlMode getControlMode() const { return m_controlMode; }
 
-        static MsgReportControl* create(bool deviceElseChannel) {
-            return new MsgReportControl(deviceElseChannel);
+        static MsgReportControl* create(ControlMode controlMode) {
+            return new MsgReportControl(controlMode);
         }
 
     protected:
-        bool m_deviceElseChannel;
+        ControlMode m_controlMode;
 
-        MsgReportControl(bool deviceElseChannel) :
+        MsgReportControl(ControlMode controlMode) :
             Message(),
-            m_deviceElseChannel(deviceElseChannel)
+            m_controlMode(controlMode)
+        { }
+    };
+
+    class MsgControlSpectrum : public Message {
+        MESSAGE_CLASS_DECLARATION
+
+    public:
+        enum Action {
+            ZoomBy,   //!< Multiply the frequency zoom factor by the value
+            PanBy,    //!< Move the zoomed window by the value (fraction of its width)
+            ResetZoom //!< Back to the full span (the value is not used)
+        };
+
+        int getDeviceSetIndex() const { return m_deviceSetIndex; }
+        Action getAction() const { return m_action; }
+        float getValue() const { return m_value; }
+
+        static MsgControlSpectrum* create(int deviceSetIndex, Action action, float value) {
+            return new MsgControlSpectrum(deviceSetIndex, action, value);
+        }
+
+    protected:
+        int m_deviceSetIndex;
+        Action m_action;
+        float m_value;
+
+        MsgControlSpectrum(int deviceSetIndex, Action action, float value) :
+            Message(),
+            m_deviceSetIndex(deviceSetIndex),
+            m_action(action),
+            m_value(value)
         { }
     };
 
@@ -203,7 +241,7 @@ private:
     DeviceAPI *m_selectedDevice;
     ChannelAPI *m_selectedChannel;
     int m_selectedIndex;
-    bool m_deviceElseChannelControl;
+    ControlMode m_controlMode;
     int m_multiplier;
     QTimer m_repeatTimer;
     static const int m_repeatms = 100;
@@ -220,6 +258,14 @@ private:
     bool dropStaleSelection();
     void channelUp();
     void channelDown();
+    void setControlMode(ControlMode controlMode);
+    void nextControlMode();
+    int getSelectedDeviceSetIndex() const;
+    void jogStep(int step);
+    void shuttleStep(int step);
+    void zoomSpectrum(int step);
+    void panSpectrum(int step);
+    void controlSpectrum(MsgControlSpectrum::Action action, float value);
     void webapiReverseSendSettings(const QList<QString>& featureSettingsKeys, const JogdialControllerSettings& settings, bool force);
 
 private slots:

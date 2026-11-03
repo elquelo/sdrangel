@@ -269,6 +269,9 @@ public:
     void setIsDeviceSpectrum(bool isDeviceSpectrum) { m_isDeviceSpectrum = isDeviceSpectrum; }
     bool isDeviceSpectrum() const { return m_isDeviceSpectrum; }
     void setFrequencyZooming(float frequencyZoomFactor, float frequencyZoomPos);
+    void zoomFrequencyBy(float ratio); //!< Multiply the frequency zoom factor by ratio (> 1 zooms in) around the displayed center
+    void panFrequencyBy(float fraction); //!< Move the zoomed frequency window by a fraction of its width (> 0 moves towards higher frequencies)
+    void resetFrequencyZooming(); //!< Back to the full span
     void setWaterfallTimeFormat(SpectrumSettings::WaterfallTimeUnits waterfallTimeUnits, const QString& format);
     void setStatusLine(bool displayRBW, bool displayCursorStats, bool displayPeakStats);
     void setScrolling(bool enabled, int length);
