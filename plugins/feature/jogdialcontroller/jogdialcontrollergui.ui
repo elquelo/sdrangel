@@ -168,7 +168,7 @@
       <item>
        <widget class="QLabel" name="controlLabel">
         <property name="toolTip">
-         <string>Device (D) or channel (C) control</string>
+         <string>Device (D), channel (C) or spectrum (S) control</string>
         </property>
         <property name="text">
          <string>D</string>

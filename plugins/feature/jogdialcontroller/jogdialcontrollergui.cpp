@@ -19,10 +19,13 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 
+#include "device/deviceuiset.h"
 #include "feature/featureuiset.h"
 #include "gui/basicfeaturesettingsdialog.h"
 #include "gui/dialogpositioner.h"
+#include "gui/glspectrum.h"
 #include "maincore.h"
+#include "mainwindow.h"
 
 #include "ui_jogdialcontrollergui.h"
 #include "jogdialcontroller.h"
@@ -99,7 +102,39 @@ bool JogdialControllerGUI::handleMessage(const Message& message)
     {
         qDebug("JogdialControllerGUI::handleMessage: JogdialController::MsgReportControl");
         JogdialController::MsgReportControl& report = (JogdialController::MsgReportControl&) message;
-        ui->controlLabel->setText(report.getDeviceElseChannel() ? "D" : "C");
+
+        if (report.getControlMode() == JogdialController::ControlMode::Device) {
+            ui->controlLabel->setText("D");
+        } else if (report.getControlMode() == JogdialController::ControlMode::Channel) {
+            ui->controlLabel->setText("C");
+        } else {
+            ui->controlLabel->setText("S");
+        }
+
+        return true;
+    }
+    else if (JogdialController::MsgControlSpectrum::match(message))
+    {
+        JogdialController::MsgControlSpectrum& cmd = (JogdialController::MsgControlSpectrum&) message;
+        std::vector<DeviceUISet*>& deviceUISets = MainWindow::getInstance()->getDeviceUISets();
+        int deviceSetIndex = cmd.getDeviceSetIndex();
+
+        if ((deviceSetIndex >= 0) && (deviceSetIndex < (int) deviceUISets.size()))
+        {
+            GLSpectrum *spectrum = deviceUISets[deviceSetIndex]->getSpectrum();
+
+            if (cmd.getAction() == JogdialController::MsgControlSpectrum::ZoomBy) {
+                spectrum->zoomFrequencyBy(cmd.getValue());
+            } else if (cmd.getAction() == JogdialController::MsgControlSpectrum::PanBy) {
+                spectrum->panFrequencyBy(cmd.getValue());
+            } else {
+                spectrum->resetFrequencyZooming();
+            }
+        }
+        else
+        {
+            qWarning("JogdialControllerGUI::handleMessage: MsgControlSpectrum: no device set %d", deviceSetIndex);
+        }
 
         return true;
     }

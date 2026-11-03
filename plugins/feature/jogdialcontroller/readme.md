@@ -45,10 +45,21 @@ To select the type of control:
 
   - Press K5 on the Contour device or ¨D" (shift+D) on the keyboard for device control
   - Press K9 on the Contour device or ¨C" (shift+C) on the keyboard for channel control
+  - Press "S" (shift+S) on the keyboard for spectrum control (see the section on spectrum control)
+  - Press "M" (shift+M) on the keyboard to go to the next type of control: device, channel, spectrum and back to device. This lets you cycle through the three types with a single button: map it to the button of your choice on the Contour device, for example K5
 
 <h3>5: Control type indicator</h3>
 
-It displays "D" when in device control or "C" when in channel control mode.
+It displays "D" when in device control, "C" when in channel control or "S" when in spectrum control mode.
+
+<h3>Spectrum control</h3>
+
+In spectrum control (S) the jog wheel and the shuttle wheel act on the frequency zoom of the spectrum and waterfall display instead of changing a frequency. The display controlled is the one of the device set the selected channel (4) belongs to. The frequency of the device or of the channel is not modified in this mode.
+
+  - The **jog wheel** zooms in (right) or out (left) around the center of the displayed window. The Ctl and Shift keys select the zoom ratio of each click: no key: x1.1, Ctl key: x1.25, Shift key: x1.5, Ctl+Shift keys: x2. The zoom factor is limited between 1 (full span) and 50 as it is with the mouse wheel.
+  - The **shuttle wheel** moves the zoomed window towards lower frequencies (left positions) or higher frequencies (right positions) for as long as the position is maintained. The move is sent every 100 ms and the further you go from the center the faster it is: the speed doubles from one position to the next, from 0.5% of the displayed width at each step for &plusmn; 1 step to 32% for &plusmn; 7 steps. It has no effect when the full span is displayed.
+  - The **Home** key (K7) resets the zoom to the full span instead of resetting the channel frequency.
+  - The keys that move through the list of channels (K6 and K8) work as usual and select which display is controlled.
 
 <h2>Contour products and keyboard control</h2>
 
@@ -139,6 +150,18 @@ The shuttle devices controls are mapped according to the following table. K5 to 
     <td>C</td>
     <td>Shift+C</td>
     <td>Channel control</td>
+  <tr>
+  <tr>
+    <td>-</td>
+    <td>S</td>
+    <td>Shift+S</td>
+    <td>Spectrum control</td>
+  <tr>
+  <tr>
+    <td>-</td>
+    <td>M</td>
+    <td>Shift+M</td>
+    <td>Next control type: device, channel, spectrum (map it to a button of your choice, for example K5)</td>
   <tr>
   <tr>
     <td>S-7</td>

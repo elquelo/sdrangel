@@ -42,6 +42,7 @@ MESSAGE_CLASS_DEFINITION(JogdialController::MsgStartStop, Message)
 MESSAGE_CLASS_DEFINITION(JogdialController::MsgRefreshChannels, Message)
 MESSAGE_CLASS_DEFINITION(JogdialController::MsgReportChannels, Message)
 MESSAGE_CLASS_DEFINITION(JogdialController::MsgReportControl, Message)
+MESSAGE_CLASS_DEFINITION(JogdialController::MsgControlSpectrum, Message)
 MESSAGE_CLASS_DEFINITION(JogdialController::MsgSelectChannel, Message)
 
 const char* const JogdialController::m_featureIdURI = "sdrangel.feature.jogdialcontroller";
@@ -52,7 +53,7 @@ JogdialController::JogdialController(WebAPIAdapterInterface *webAPIAdapterInterf
     m_selectedDevice(nullptr),
     m_selectedChannel(nullptr),
     m_selectedIndex(-1),
-    m_deviceElseChannelControl(true),
+    m_controlMode(ControlMode::Device),
     m_multiplier(1)
 {
     qDebug("JogdialController::JogdialController: webAPIAdapterInterface: %p", webAPIAdapterInterface);
@@ -597,19 +598,19 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
 
     if (key == Qt::Key_C)
     {
-        m_deviceElseChannelControl = false;
-
-        if (m_guiMessageQueue) {
-            m_guiMessageQueue->push(MsgReportControl::create(false));
-        }
+        setControlMode(ControlMode::Channel);
     }
     else if (key == Qt::Key_D)
     {
-        m_deviceElseChannelControl = true;
-
-        if (m_guiMessageQueue) {
-            m_guiMessageQueue->push(MsgReportControl::create(true));
-        }
+        setControlMode(ControlMode::Device);
+    }
+    else if (key == Qt::Key_S)
+    {
+        setControlMode(ControlMode::Spectrum);
+    }
+    else if (key == Qt::Key_M)
+    {
+        nextControlMode();
     }
     else if (key == Qt::Key_Left)
     {
@@ -624,13 +625,13 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
         m_repeatTimer.stop();
 
         if (keyModifiers == Qt::NoModifier) {
-            stepFrequency(1);
+            jogStep(1);
         } else if (keyModifiers == Qt::ControlModifier) {
-            stepFrequency(10);
+            jogStep(10);
         } else if (keyModifiers == Qt::ShiftModifier) {
-            stepFrequency(100);
+            jogStep(100);
         } else if (keyModifiers == (Qt::ControlModifier | Qt::ShiftModifier)) {
-            stepFrequency(1000);
+            jogStep(1000);
         }
     }
     else if (key == Qt::Key_Down)
@@ -638,18 +639,22 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
         m_repeatTimer.stop();
 
         if (keyModifiers == Qt::NoModifier) {
-            stepFrequency(-1);
+            jogStep(-1);
         } else if (keyModifiers == Qt::ControlModifier) {
-            stepFrequency(-10);
+            jogStep(-10);
         } else if (keyModifiers == Qt::ShiftModifier) {
-            stepFrequency(-100);
+            jogStep(-100);
         } else if (keyModifiers == (Qt::ControlModifier | Qt::ShiftModifier)) {
-            stepFrequency(-1000);
+            jogStep(-1000);
         }
     }
     else if (key == Qt::Key_Home)
     {
-        resetChannelFrequency();
+        if (m_controlMode == ControlMode::Spectrum) {
+            controlSpectrum(MsgControlSpectrum::ResetZoom, 0.0f);
+        } else {
+            resetChannelFrequency();
+        }
     }
     else if (key == Qt::Key_0)
     {
@@ -746,7 +751,7 @@ void JogdialController::stepFrequency(int step)
         updateChannels();
     }
 
-    if (m_deviceElseChannelControl)
+    if (m_controlMode == ControlMode::Device)
     {
         if (m_selectedDevice)
         {
@@ -796,7 +801,121 @@ void JogdialController::stepFrequency(int step)
     }
 }
 
+//! The jog wheel zooms the spectrum in spectrum control and steps a frequency otherwise
+void JogdialController::jogStep(int step)
+{
+    if (m_controlMode == ControlMode::Spectrum) {
+        zoomSpectrum(step);
+    } else {
+        stepFrequency(step);
+    }
+}
+
+//! The shuttle wheel pans the spectrum in spectrum control and steps a frequency otherwise
+void JogdialController::shuttleStep(int step)
+{
+    if (m_controlMode == ControlMode::Spectrum) {
+        panSpectrum(step);
+    } else {
+        stepFrequency(step);
+    }
+}
+
+//! step is +/- 1, 10, 100 or 1000 according to the modifier keys: the bigger the step the more each click zooms
+void JogdialController::zoomSpectrum(int step)
+{
+    const int magnitude = qAbs(step);
+    float ratio;
+
+    if (magnitude >= 1000) {
+        ratio = 2.0f;
+    } else if (magnitude >= 100) {
+        ratio = 1.5f;
+    } else if (magnitude >= 10) {
+        ratio = 1.25f;
+    } else {
+        ratio = 1.1f;
+    }
+
+    controlSpectrum(MsgControlSpectrum::ZoomBy, (step > 0) ? ratio : 1.0f / ratio);
+}
+
+//! step is +/- 10^(n-1) with n the shuttle position (1 to 7): each position moves twice as fast as the previous one
+void JogdialController::panSpectrum(int step)
+{
+    int position = 0; // 0 to 6
+
+    for (int magnitude = qAbs(step); magnitude >= 10; magnitude /= 10) {
+        position++;
+    }
+
+    // From 0.5% to 32% of the displayed window width at each repeat
+    const float fraction = 0.005f * (1 << position);
+    controlSpectrum(MsgControlSpectrum::PanBy, (step > 0) ? fraction : -fraction);
+}
+
+//! Send the zoom or pan command to the GUI that owns the spectrum of the device set of the selected channel
+void JogdialController::controlSpectrum(MsgControlSpectrum::Action action, float value)
+{
+    if (dropStaleSelection()) {
+        updateChannels();
+    }
+
+    const int deviceSetIndex = getSelectedDeviceSetIndex();
+
+    if ((deviceSetIndex < 0) || !getMessageQueueToGUI()) {
+        return;
+    }
+
+    getMessageQueueToGUI()->push(MsgControlSpectrum::create(deviceSetIndex, action, value));
+}
+
+void JogdialController::setControlMode(ControlMode controlMode)
+{
+    m_repeatTimer.stop(); // a shuttle movement in progress was meant for the previous mode
+    m_controlMode = controlMode;
+
+    if (m_guiMessageQueue) {
+        m_guiMessageQueue->push(MsgReportControl::create(m_controlMode));
+    }
+}
+
+//! Device -> channel -> spectrum -> device
+void JogdialController::nextControlMode()
+{
+    switch (m_controlMode)
+    {
+    case ControlMode::Device:
+        setControlMode(ControlMode::Channel);
+        break;
+    case ControlMode::Channel:
+        setControlMode(ControlMode::Spectrum);
+        break;
+    default:
+        setControlMode(ControlMode::Device);
+        break;
+    }
+}
+
+int JogdialController::getSelectedDeviceSetIndex() const
+{
+    if (!m_selectedDevice) {
+        return -1;
+    }
+
+    const std::vector<DeviceSet*>& deviceSets = MainCore::instance()->getDeviceSets();
+
+    for (unsigned int i = 0; i < deviceSets.size(); i++)
+    {
+        if (deviceSets[i]->m_deviceAPI == m_selectedDevice) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 void JogdialController::handleRepeat()
 {
-    stepFrequency(m_multiplier);
+    shuttleStep(m_multiplier);
 }
