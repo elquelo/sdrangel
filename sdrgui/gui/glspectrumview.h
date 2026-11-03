@@ -270,6 +270,7 @@ public:
     bool isDeviceSpectrum() const { return m_isDeviceSpectrum; }
     void setFrequencyZooming(float frequencyZoomFactor, float frequencyZoomPos);
     void zoomFrequencyBy(float ratio); //!< Multiply the frequency zoom factor by ratio (> 1 zooms in) around the displayed center
+    void zoomFrequencyBy(float ratio, qint64 frequencyOffset); //!< Same but the frequency at frequencyOffset from the device center keeps its place on the screen
     void panFrequencyBy(float fraction); //!< Move the zoomed frequency window by a fraction of its width (> 0 moves towards higher frequencies)
     void resetFrequencyZooming(); //!< Back to the full span
     void setWaterfallTimeFormat(SpectrumSettings::WaterfallTimeUnits waterfallTimeUnits, const QString& format);
