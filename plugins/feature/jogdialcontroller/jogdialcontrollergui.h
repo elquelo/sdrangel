@@ -20,6 +20,7 @@
 #define INCLUDE_FEATURE_JOGDIALCONTROLLERGUI_H_
 
 #include <QList>
+#include <QPointer>
 
 #include "feature/featuregui.h"
 #include "util/messagequeue.h"
@@ -32,6 +33,7 @@ class PluginAPI;
 class FeatureUISet;
 class JogdialController;
 class Feature;
+class QShortcut;
 
 namespace Ui {
 	class JogdialControllerGUI;
@@ -70,6 +72,7 @@ private:
 	QList<JogdialControllerSettings::AvailableChannel> m_availableChannels;
 	ChannelAPI *m_selectedChannel;
 	CommandKeyReceiver m_commandKeyReceiver;
+	QPointer<QShortcut> m_focusShortcut; //!< Takes the keyboard focus from any window of the application while the plugin is started
 
 	explicit JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *featureUISet, Feature *feature, QWidget* parent = nullptr);
 	virtual ~JogdialControllerGUI();
@@ -80,6 +83,7 @@ private:
 	void updateChannelList();
 	bool handleMessage(const Message& message);
     void makeUIConnections();
+    void takeKeyboardFocus();
 
 private slots:
 	void onMenuDialogCalled(const QPoint &p);
