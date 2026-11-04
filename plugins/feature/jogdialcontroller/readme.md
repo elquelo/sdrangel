@@ -22,7 +22,7 @@ Use this toggle to activate or deactivate the plugin. Note that for the control 
 
 This indicator turns green if the plugin has focus. To set the focus on the plugin just click anywhere on it. The controls are effective only if the plugin has focus.
 
-The refresh button (3) and the channel selection combo box (4) do not take the focus when clicked: using them does not interrupt the control. Clicking on any other part of SDRangel (spectrum, other windows) moves the focus away and you need to click on the plugin again.
+The refresh button (3) and the channel selection combo box (4) do not take the focus when clicked: using them does not interrupt the control. Clicking on any other part of SDRangel (spectrum, other windows) moves the focus away. To get it back without the mouse press Shift+J (map it to a button of your choice, for example K9): it works whichever window of SDRangel has the focus, as long as the plugin is started.
 
 <h3>3: Refresh channels list</h3>
 
@@ -156,6 +156,12 @@ The shuttle devices controls are mapped according to the following table. K5 to 
     <td>S</td>
     <td>Shift+S</td>
     <td>Spectrum control</td>
+  <tr>
+  <tr>
+    <td>-</td>
+    <td>J</td>
+    <td>Shift+J</td>
+    <td>Set the focus on the plugin from anywhere in SDRangel (map it to a button of your choice, for example K9)</td>
   <tr>
   <tr>
     <td>-</td>

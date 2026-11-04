@@ -18,6 +18,7 @@
 
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QShortcut>
 
 #include "device/deviceuiset.h"
 #include "feature/featureuiset.h"
@@ -213,6 +214,14 @@ JogdialControllerGUI::JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *f
 	connect(&MainCore::instance()->getMasterTimer(), SIGNAL(timeout()), this, SLOT(tick()));
     this->installEventFilter(&m_commandKeyReceiver);
 
+    // The controller keys only reach this window when it has the keyboard focus. This shortcut
+    // works whichever window of the application has the focus. It is attached to the main window
+    // as a shortcut is only active when its parent widget is visible
+    m_focusShortcut = new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_J), MainWindow::getInstance());
+    m_focusShortcut->setContext(Qt::ApplicationShortcut);
+    m_focusShortcut->setEnabled(false);
+    connect(m_focusShortcut, &QShortcut::activated, this, &JogdialControllerGUI::takeKeyboardFocus);
+
     m_settings.setRollupState(&m_rollupState);
 
     displaySettings();
@@ -223,6 +232,7 @@ JogdialControllerGUI::JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *f
 
 JogdialControllerGUI::~JogdialControllerGUI()
 {
+	delete m_focusShortcut.data();
 	delete ui;
 }
 
@@ -336,6 +346,7 @@ void JogdialControllerGUI::on_startStop_toggled(bool checked)
         // The captured keys must not be passed on, else they also reach the widgets
         // that contain this one (for example arrow keys scrolling the window)
         m_commandKeyReceiver.setPass(false);
+        m_focusShortcut->setEnabled(true);
         connect(&m_commandKeyReceiver, SIGNAL(capturedKey(Qt::Key, Qt::KeyboardModifiers, bool)),
             m_jogdialController, SLOT(commandKeyPressed(Qt::Key, Qt::KeyboardModifiers, bool)));
     }
@@ -344,6 +355,7 @@ void JogdialControllerGUI::on_startStop_toggled(bool checked)
         disconnect(&m_commandKeyReceiver, SIGNAL(capturedKey(Qt::Key, Qt::KeyboardModifiers, bool)),
             m_jogdialController, SLOT(commandKeyPressed(Qt::Key, Qt::KeyboardModifiers, bool)));
         m_commandKeyReceiver.setPass(true);
+        m_focusShortcut->setEnabled(false);
         setFocusPolicy(Qt::NoFocus);
         clearFocus();
     }
@@ -400,6 +412,12 @@ void JogdialControllerGUI::focusOutEvent(QFocusEvent*)
     qDebug("JogdialControllerGUI::focusOutEvent");
     ui->focusIndicator->setStyleSheet("QLabel { background-color: gray; border-radius: 8px; }"); // gray
     ui->focusIndicator->setToolTip("Idle");
+}
+
+void JogdialControllerGUI::takeKeyboardFocus()
+{
+    activateWindow();
+    setFocus(Qt::OtherFocusReason);
 }
 
 void JogdialControllerGUI::makeUIConnections()
