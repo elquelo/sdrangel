@@ -21,6 +21,7 @@
 
 #include <QList>
 #include <QNetworkRequest>
+#include <QElapsedTimer>
 #include <QTimer>
 
 #include "feature/feature.h"
@@ -230,6 +231,7 @@ public:
 
     void resetChannelFrequency();
     void stepFrequency(int step);
+    void flushDeviceSteps(bool force = false);
 
     static void webapiFormatFeatureSettings(
         SWGSDRangel::SWGFeatureSettings& response,
@@ -253,9 +255,31 @@ private:
     ChannelAPI *m_selectedChannel;
     int m_selectedIndex;
     ControlMode m_controlMode;
-    int m_multiplier;
-    QTimer m_repeatTimer;
-    static const int m_repeatms = 100;
+    QTimer m_motionTimer;                //!< Drives the shuttle motion, the zoom animation and the device retuning
+    QElapsedTimer m_motionClock;         //!< Time elapsed since the last motion update
+    QElapsedTimer m_jogClock;            //!< Time elapsed since the last jog click
+    QElapsedTimer m_deviceRetuneClock;   //!< Time elapsed since the last retuning of the device
+    int m_shuttlePosition;               //!< Position of the shuttle ring: -7 to 7 (0: centered)
+    double m_velocity;                   //!< Current shuttle speed, smoothed. Steps/s (frequency control) or window widths/s (spectrum control)
+    double m_steps;                      //!< Fraction of a step not yet applied
+    double m_zoomPending;                //!< Natural logarithm of the zoom ratio requested and not yet applied
+    qint64 m_pendingDeviceStep;          //!< Steps requested on the device and not yet applied
+    int m_lastJogDirection;              //!< Sign of the last jog click
+
+    static const int m_motionIntervalMs = 30;          //!< Period of the motion updates
+    static const int m_velocityTimeConstantMs = 150;   //!< The shuttle speed follows the ring position with this time constant when accelerating
+    static const int m_velocityDecelTimeConstantMs = 60; //!< Same when slowing down: shorter so that stopping does not overshoot much
+    static const int m_zoomTimeConstantMs = 120;       //!< The animated zoom covers its remaining distance with this time constant
+    static const int m_deviceRetuneMinMs = 100;        //!< Minimum delay between two retunings of the device
+    static const int m_shuttleMaxPosition = 7;
+    static constexpr double m_frequencyShuttleRatio = 3.1622776601683795; //!< Speed ratio between two ring positions (half a decade)
+    static constexpr double m_channelShuttleBase = 30.0;   //!< Hz/s at ring position 1 when controlling a channel
+    static constexpr double m_deviceShuttleBase = 3.0;     //!< kHz/s at ring position 1 when controlling a device
+    static constexpr double m_spectrumShuttleRatio = 2.0;  //!< Speed ratio between two ring positions in spectrum control
+    static constexpr double m_spectrumShuttleBase = 0.02;  //!< Window widths per second at ring position 1
+    static constexpr double m_jogGainMinRate = 6.0;        //!< Jog clicks per second above which the jog accelerates
+    static constexpr double m_jogGainMax = 25.0;           //!< Maximum jog acceleration
+    static constexpr double m_zoomPendingMax = 2.772588722239781; //!< Maximum pending zoom: ln(16)
 
     QNetworkAccessManager *m_networkManager;
     QNetworkRequest m_networkRequest;
@@ -273,16 +297,22 @@ private:
     void nextControlMode();
     int getSelectedDeviceSetIndex() const;
     void jogStep(int step);
-    void shuttleStep(int step);
-    void zoomSpectrum(int step);
-    void panSpectrum(int step);
+    double jogGain(int direction);
+    void zoomSpectrum(int step, double gain);
+    void setShuttlePosition(int position);
+    static bool shuttlePositionFromKey(Qt::Key key, int& position);
+    double shuttleTargetVelocity() const;
+    double shuttleBaseVelocity() const;
+    void startMotion();
+    void stopMotion();
+    void applyDeviceStep(qint64 step);
     void controlSpectrum(MsgControlSpectrum::Action action, float value);
     void webapiReverseSendSettings(const QList<QString>& featureSettingsKeys, const JogdialControllerSettings& settings, bool force);
 
 private slots:
     void networkManagerFinished(QNetworkReply *reply);
     void handleChannelMessageQueue(MessageQueue *messageQueues);
-    void handleRepeat();
+    void handleMotion();
 };
 
 #endif // INCLUDE_FEATURE_DEMODANALYZER_H_
