@@ -45,6 +45,22 @@ struct JogdialControllerSettings
         AvailableChannel& operator=(const AvailableChannel&) = default;
     };
 
+    //! Parameters of the jog wheel and the shuttle ring in one control mode
+    struct MotionParams
+    {
+        double m_shuttleBase;      //!< Speed at ring position 1: kHz/s (device), Hz/s (channel) or window widths/s (spectrum)
+        double m_shuttleRatio;     //!< Speed ratio between two successive ring positions
+        int m_accelMs;             //!< Time constant when the ring speeds up (ms)
+        int m_decelMs;             //!< Time constant when the ring slows down (ms)
+        double m_jogGainMinRate;   //!< Jog clicks per second above which the jog accelerates
+        double m_jogGainMax;       //!< Maximum jog acceleration
+        int m_zoomMs;              //!< Time constant of the animated zoom (spectrum only)
+        int m_retuneMs;            //!< Minimum delay between two retunings of the device (device only)
+    };
+
+    static const int m_modeCount = 3; //!< Device, channel, spectrum: same order as JogdialController::ControlMode
+    static MotionParams defaultMotionParams(int mode);
+
     QString m_title;
     quint32 m_rgbColor;
     bool m_useReverseAPI;
@@ -55,6 +71,7 @@ struct JogdialControllerSettings
     Serializable *m_rollupState;
     int m_workspaceIndex;
     QByteArray m_geometryBytes;
+    MotionParams m_motion[m_modeCount];
 
     JogdialControllerSettings();
     void resetToDefaults();

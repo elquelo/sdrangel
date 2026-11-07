@@ -18,6 +18,9 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.          //
 ///////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <sstream>
+
 #include <QColor>
 
 #include "util/simpleserializer.h"
@@ -61,6 +64,35 @@ const QStringList JogdialControllerSettings::m_channelURIs = {
     QStringLiteral("sdrangel.channeltx.modbfm"),
 };
 
+JogdialControllerSettings::MotionParams JogdialControllerSettings::defaultMotionParams(int mode)
+{
+    MotionParams p;
+    p.m_accelMs = 60;
+    p.m_decelMs = 60;
+    p.m_jogGainMinRate = 6.0;
+    p.m_jogGainMax = 25.0;
+    p.m_zoomMs = 120;
+    p.m_retuneMs = 100;
+
+    if (mode == 0) // device
+    {
+        p.m_shuttleBase = 3.0;
+        p.m_shuttleRatio = 3.1622776601683795;
+    }
+    else if (mode == 1) // channel
+    {
+        p.m_shuttleBase = 30.0;
+        p.m_shuttleRatio = 4.641588833612778;
+    }
+    else // spectrum
+    {
+        p.m_shuttleBase = 0.02;
+        p.m_shuttleRatio = 2.0;
+    }
+
+    return p;
+}
+
 JogdialControllerSettings::JogdialControllerSettings() :
     m_rollupState(nullptr)
 {
@@ -77,6 +109,10 @@ void JogdialControllerSettings::resetToDefaults()
     m_reverseAPIFeatureSetIndex = 0;
     m_reverseAPIFeatureIndex = 0;
     m_workspaceIndex = 0;
+
+    for (int i = 0; i < m_modeCount; i++) {
+        m_motion[i] = defaultMotionParams(i);
+    }
 }
 
 QByteArray JogdialControllerSettings::serialize() const
@@ -97,6 +133,19 @@ QByteArray JogdialControllerSettings::serialize() const
 
     s.writeS32(13, m_workspaceIndex);
     s.writeBlob(14, m_geometryBytes);
+
+    for (int i = 0; i < m_modeCount; i++)
+    {
+        const quint32 id = 20 + 10*i;
+        s.writeDouble(id, m_motion[i].m_shuttleBase);
+        s.writeDouble(id + 1, m_motion[i].m_shuttleRatio);
+        s.writeS32(id + 2, m_motion[i].m_accelMs);
+        s.writeS32(id + 3, m_motion[i].m_decelMs);
+        s.writeDouble(id + 4, m_motion[i].m_jogGainMinRate);
+        s.writeDouble(id + 5, m_motion[i].m_jogGainMax);
+        s.writeS32(id + 6, m_motion[i].m_zoomMs);
+        s.writeS32(id + 7, m_motion[i].m_retuneMs);
+    }
 
     return s.final();
 }
@@ -143,6 +192,30 @@ bool JogdialControllerSettings::deserialize(const QByteArray& data)
         d.readS32(13, &m_workspaceIndex, 0);
         d.readBlob(14, &m_geometryBytes);
 
+        for (int i = 0; i < m_modeCount; i++)
+        {
+            const quint32 id = 20 + 10*i;
+            const MotionParams def = defaultMotionParams(i);
+            MotionParams& p = m_motion[i];
+            d.readDouble(id, &p.m_shuttleBase, def.m_shuttleBase);
+            d.readDouble(id + 1, &p.m_shuttleRatio, def.m_shuttleRatio);
+            d.readS32(id + 2, &p.m_accelMs, def.m_accelMs);
+            d.readS32(id + 3, &p.m_decelMs, def.m_decelMs);
+            d.readDouble(id + 4, &p.m_jogGainMinRate, def.m_jogGainMinRate);
+            d.readDouble(id + 5, &p.m_jogGainMax, def.m_jogGainMax);
+            d.readS32(id + 6, &p.m_zoomMs, def.m_zoomMs);
+            d.readS32(id + 7, &p.m_retuneMs, def.m_retuneMs);
+            // Keep the values in the ranges that make sense whatever is stored
+            p.m_shuttleBase = std::max(1e-4, std::min(1e6, p.m_shuttleBase));
+            p.m_shuttleRatio = std::max(1.05, std::min(10.0, p.m_shuttleRatio));
+            p.m_accelMs = std::max(5, std::min(5000, p.m_accelMs));
+            p.m_decelMs = std::max(5, std::min(5000, p.m_decelMs));
+            p.m_jogGainMinRate = std::max(1.0, std::min(50.0, p.m_jogGainMinRate));
+            p.m_jogGainMax = std::max(1.0, std::min(200.0, p.m_jogGainMax));
+            p.m_zoomMs = std::max(5, std::min(5000, p.m_zoomMs));
+            p.m_retuneMs = std::max(10, std::min(2000, p.m_retuneMs));
+        }
+
         return true;
     }
     else
@@ -177,6 +250,12 @@ void JogdialControllerSettings::applySettings(const QStringList& settingsKeys, c
     }
     if (settingsKeys.contains("workspaceIndex")) {
         m_workspaceIndex = settings.m_workspaceIndex;
+    }
+    if (settingsKeys.contains("motion"))
+    {
+        for (int i = 0; i < m_modeCount; i++) {
+            m_motion[i] = settings.m_motion[i];
+        }
     }
 }
 

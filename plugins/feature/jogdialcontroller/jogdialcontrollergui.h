@@ -34,6 +34,10 @@ class FeatureUISet;
 class JogdialController;
 class Feature;
 class QShortcut;
+class QSlider;
+class QLabel;
+class QComboBox;
+class QPushButton;
 
 namespace Ui {
 	class JogdialControllerGUI;
@@ -74,6 +78,21 @@ private:
 	CommandKeyReceiver m_commandKeyReceiver;
 	QPointer<QShortcut> m_focusShortcut; //!< Takes the keyboard focus from any window of the application while the plugin is started
 
+	//! Sliders of the motion parameters of one control mode
+	struct MotionRow
+	{
+		QLabel *m_label{nullptr};
+		QSlider *m_slider{nullptr};
+		QLabel *m_value{nullptr};
+	};
+	enum MotionField { MfBase, MfRatio, MfAccel, MfDecel, MfJogRate, MfJogMax, MfZoom, MfRetune, MfCount };
+
+	MotionRow m_motionRows[MfCount];
+	QComboBox *m_motionMode{nullptr};
+	QPushButton *m_motionDefaults{nullptr};
+	QLabel *m_motionSpeeds{nullptr};
+	int m_displayedMode{0};
+
 	explicit JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *featureUISet, Feature *feature, QWidget* parent = nullptr);
 	virtual ~JogdialControllerGUI();
 
@@ -84,6 +103,13 @@ private:
 	bool handleMessage(const Message& message);
     void makeUIConnections();
     void takeKeyboardFocus();
+	void buildMotionUI();
+	void displayMotion();
+	void onMotionSliderChanged(int field, int sliderValue);
+	double motionFieldValue(int field, int sliderValue) const;
+	int motionFieldSlider(int field, double value) const;
+	QString motionFieldText(int field, double value) const;
+	static QString formatSpeed(int mode, double value);
 
 private slots:
 	void onMenuDialogCalled(const QPoint &p);
