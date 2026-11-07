@@ -94,6 +94,8 @@ private:
 	JogdialScale *m_clickScale{nullptr};
 	JogdialScale *m_accelScale{nullptr};
 	int m_displayedMode{0};
+	static const QString m_controlLabelFocused; //!< Style of the control mode indicator when the plugin has the keyboard focus
+	static const QString m_controlLabelIdle;
 
 	explicit JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *featureUISet, Feature *feature, QWidget* parent = nullptr);
 	virtual ~JogdialControllerGUI();
