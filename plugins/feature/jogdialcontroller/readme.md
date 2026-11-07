@@ -16,11 +16,11 @@ Note that it is based on Qt keyboard events. These events are supported only for
 
 <h3>1: Start/Stop</h3>
 
-Use this toggle to activate or deactivate the plugin. Note that for the control to be effective the plugin should also have the focus. You can check the focus state with the focus indicator (2)
+Use this toggle to activate or deactivate the plugin. Note that for the control to be effective the plugin should also have the focus. You can check the focus state with the control type indicator (2)
 
-<h3>2: Focus indicator</h3>
+<h3>2: Control type and focus indicator</h3>
 
-This indicator turns green if the plugin has focus. To set the focus on the plugin just click anywhere on it. The controls are effective only if the plugin has focus.
+This square next to the start/stop button shows the type of control: "D" for device control, "C" for channel control or "S" for spectrum control. It turns green if the plugin has focus and stays gray otherwise. To set the focus on the plugin just click anywhere on it. The controls are effective only if the plugin has focus.
 
 The refresh button (3) and the channel selection combo box (4) do not take the focus when clicked: using them does not interrupt the control. Clicking on any other part of SDRangel (spectrum, other windows) moves the focus away. To get it back without the mouse press Shift+J (map it to a button of your choice, for example K9): it works whichever window of SDRangel has the focus, as long as the plugin is started.
 
@@ -39,7 +39,7 @@ Use this combo box to select which channel to control. The list item is formatte
   - The sequence number of the channel after the semicolon separator
   - The type of channel
 
-The frequency of the device of the device set the channel belongs to can also be controlled when device control is selected. The type of control is displayed in (5)
+The frequency of the device of the device set the channel belongs to can also be controlled when device control is selected. The type of control is displayed in (2)
 
 To select the type of control:
 
@@ -48,9 +48,9 @@ To select the type of control:
   - Press "S" (shift+S) on the keyboard for spectrum control (see the section on spectrum control)
   - Press "M" (shift+M) on the keyboard to go to the next type of control: device, channel, spectrum and back to device. This lets you cycle through the three types with a single button: map it to the button of your choice on the Contour device, for example K5
 
-<h3>5: Control type indicator</h3>
+<h3>5: Control type</h3>
 
-It displays "D" when in device control, "C" when in channel control or "S" when in spectrum control mode.
+The type of control selected is displayed in (2).
 
 <h3>6: Motion parameters</h3>
 

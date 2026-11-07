@@ -42,6 +42,11 @@
 #include "jogdialcontroller.h"
 #include "jogdialcontrollergui.h"
 
+const QString JogdialControllerGUI::m_controlLabelFocused =
+    "QLabel { background-color: rgb(85, 232, 85); color: black; border-radius: 4px; font-size: 18px; font-weight: bold; }";
+const QString JogdialControllerGUI::m_controlLabelIdle =
+    "QLabel { background-color: gray; color: white; border-radius: 4px; font-size: 18px; font-weight: bold; }";
+
 JogdialControllerGUI* JogdialControllerGUI::create(PluginAPI* pluginAPI, FeatureUISet *featureUISet, Feature *feature)
 {
 	JogdialControllerGUI* gui = new JogdialControllerGUI(pluginAPI, featureUISet, feature);
@@ -212,6 +217,11 @@ JogdialControllerGUI::JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *f
     m_helpURL = "plugins/feature/jogdialcontroller/readme.md";
     RollupContents *rollupContents = getRollupContents();
 	ui->setupUi(rollupContents);
+
+    // The control type indicator is as big as the start/stop button
+    const QSize buttonSize = ui->startStop->sizeHint().expandedTo(QSize(32, 32));
+    ui->controlLabel->setFixedSize(buttonSize);
+    ui->controlLabel->setStyleSheet(m_controlLabelIdle);
     buildMotionUI();
     rollupContents->arrangeRollups();
 	connect(rollupContents, SIGNAL(widgetRolled(QWidget*,bool)), this, SLOT(onWidgetRolled(QWidget*,bool)));
@@ -771,15 +781,13 @@ void JogdialControllerGUI::applySettings(bool force)
 void JogdialControllerGUI::focusInEvent(QFocusEvent*)
 {
     qDebug("JogdialControllerGUI::focusInEvent");
-    ui->focusIndicator->setStyleSheet("QLabel { background-color: rgb(85, 232, 85); border-radius: 8px; }"); // green
-    ui->focusIndicator->setToolTip("Active");
+    ui->controlLabel->setStyleSheet(m_controlLabelFocused); // green
 }
 
 void JogdialControllerGUI::focusOutEvent(QFocusEvent*)
 {
     qDebug("JogdialControllerGUI::focusOutEvent");
-    ui->focusIndicator->setStyleSheet("QLabel { background-color: gray; border-radius: 8px; }"); // gray
-    ui->focusIndicator->setToolTip("Idle");
+    ui->controlLabel->setStyleSheet(m_controlLabelIdle); // gray
 }
 
 void JogdialControllerGUI::takeKeyboardFocus()
