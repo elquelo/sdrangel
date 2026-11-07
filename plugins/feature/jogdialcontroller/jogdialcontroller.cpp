@@ -15,6 +15,10 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.          //
 ///////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+
 #include <QDebug>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -54,7 +58,12 @@ JogdialController::JogdialController(WebAPIAdapterInterface *webAPIAdapterInterf
     m_selectedChannel(nullptr),
     m_selectedIndex(-1),
     m_controlMode(ControlMode::Device),
-    m_multiplier(1)
+    m_shuttlePosition(0),
+    m_velocity(0.0),
+    m_steps(0.0),
+    m_zoomPending(0.0),
+    m_pendingDeviceStep(0),
+    m_lastJogDirection(0)
 {
     qDebug("JogdialController::JogdialController: webAPIAdapterInterface: %p", webAPIAdapterInterface);
     setObjectName(m_featureId);
@@ -67,7 +76,7 @@ JogdialController::JogdialController(WebAPIAdapterInterface *webAPIAdapterInterf
         this,
         &JogdialController::networkManagerFinished
     );
-    connect(&m_repeatTimer, SIGNAL(timeout()), this, SLOT(handleRepeat()));
+    connect(&m_motionTimer, SIGNAL(timeout()), this, SLOT(handleMotion()));
 }
 
 JogdialController::~JogdialController()
@@ -622,7 +631,7 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
     }
     else if (key == Qt::Key_Up)
     {
-        m_repeatTimer.stop();
+        setShuttlePosition(0);
 
         if (keyModifiers == Qt::NoModifier) {
             jogStep(1);
@@ -636,7 +645,7 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
     }
     else if (key == Qt::Key_Down)
     {
-        m_repeatTimer.stop();
+        setShuttlePosition(0);
 
         if (keyModifiers == Qt::NoModifier) {
             jogStep(-1);
@@ -650,85 +659,51 @@ void JogdialController::commandKeyPressed(Qt::Key key, Qt::KeyboardModifiers key
     }
     else if (key == Qt::Key_Home)
     {
-        if (m_controlMode == ControlMode::Spectrum) {
+        if (m_controlMode == ControlMode::Spectrum)
+        {
+            m_zoomPending = 0.0;
             controlSpectrum(MsgControlSpectrum::ResetZoom, 0.0f);
-        } else {
+        }
+        else
+        {
             resetChannelFrequency();
         }
     }
     else if (key == Qt::Key_0)
     {
-        m_repeatTimer.stop();
+        setShuttlePosition(0);
     }
-    else if (key == Qt::Key_1)
+    else
     {
-        m_multiplier = 1;
-        m_repeatTimer.start(m_repeatms);
+        int position;
+
+        if (shuttlePositionFromKey(key, position)) {
+            setShuttlePosition(position);
+        }
     }
-    else if (key == Qt::Key_2)
+}
+
+//! The shuttle ring is mapped on the digits (right) and shifted digits (left) of the keyboard
+bool JogdialController::shuttlePositionFromKey(Qt::Key key, int& position)
+{
+    switch (key)
     {
-        m_multiplier = 10;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_3)
-    {
-        m_multiplier = 100;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_4)
-    {
-        m_multiplier = 1000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_5)
-    {
-        m_multiplier = 10000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_6)
-    {
-        m_multiplier = 100000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_7)
-    {
-        m_multiplier = 1000000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_Exclam)
-    {
-        m_multiplier = -1;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_At)
-    {
-        m_multiplier = -10;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_NumberSign)
-    {
-        m_multiplier = -100;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_Dollar)
-    {
-        m_multiplier = -1000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_Percent)
-    {
-        m_multiplier = -10000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if ((key == Qt::Key_Dead_Circumflex) || (key == Qt::Key_AsciiCircum))
-    {
-        m_multiplier = -100000;
-        m_repeatTimer.start(m_repeatms);
-    }
-    else if (key == Qt::Key_Ampersand)
-    {
-        m_multiplier = -1000000;
-        m_repeatTimer.start(m_repeatms);
+    case Qt::Key_1: position = 1; return true;
+    case Qt::Key_2: position = 2; return true;
+    case Qt::Key_3: position = 3; return true;
+    case Qt::Key_4: position = 4; return true;
+    case Qt::Key_5: position = 5; return true;
+    case Qt::Key_6: position = 6; return true;
+    case Qt::Key_7: position = 7; return true;
+    case Qt::Key_Exclam: position = -1; return true;
+    case Qt::Key_At: position = -2; return true;
+    case Qt::Key_NumberSign: position = -3; return true;
+    case Qt::Key_Dollar: position = -4; return true;
+    case Qt::Key_Percent: position = -5; return true;
+    case Qt::Key_Dead_Circumflex:
+    case Qt::Key_AsciiCircum: position = -6; return true;
+    case Qt::Key_Ampersand: position = -7; return true;
+    default: return false;
     }
 }
 
@@ -743,6 +718,8 @@ void JogdialController::resetChannelFrequency()
     }
 }
 
+//! Step a frequency: 1 Hz for a channel, 1 kHz for a device.
+//! The device is retuned at a limited rate: the steps requested in between are added up
 void JogdialController::stepFrequency(int step)
 {
     qDebug("JogdialController::stepFrequency: step: %d", step);
@@ -753,43 +730,8 @@ void JogdialController::stepFrequency(int step)
 
     if (m_controlMode == ControlMode::Device)
     {
-        if (m_selectedDevice)
-        {
-            DSPDeviceSourceEngine *sourceEngine = m_selectedDevice->getDeviceSourceEngine();
-            DSPDeviceSinkEngine *sinkEngine = m_selectedDevice->getDeviceSinkEngine();
-            DSPDeviceMIMOEngine *mimoEngine = m_selectedDevice->getDeviceMIMOEngine();
-
-            if (mimoEngine && mimoEngine->getMIMO())
-            {
-                // MIMO: act on the Rx or Tx stream of the selected channel (stream 0 if no channel is selected)
-                DeviceSampleMIMO *mimo = mimoEngine->getMIMO();
-                const int streamIndex = m_selectedChannel ? m_selectedChannel->getStreamIndex() : 0;
-
-                if (m_selectedChannel && (m_selectedChannel->getStreamType() == ChannelAPI::StreamSingleSource))
-                {
-                    qint64 frequency = mimo->getSinkCenterFrequency(streamIndex);
-                    mimo->setSinkCenterFrequency(frequency + step*1000LL, streamIndex);
-                }
-                else
-                {
-                    qint64 frequency = mimo->getSourceCenterFrequency(streamIndex);
-                    mimo->setSourceCenterFrequency(frequency + step*1000LL, streamIndex);
-                }
-            }
-
-            if (sourceEngine)
-            {
-                quint64 frequency = sourceEngine->getSource()->getCenterFrequency();
-                qDebug("JogdialController::stepFrequency: frequency: %llu", frequency);
-                sourceEngine->getSource()->setCenterFrequency(frequency + step*1000LL);
-            }
-
-            if (sinkEngine)
-            {
-                quint64 frequency = sinkEngine->getSink()->getCenterFrequency();
-                sinkEngine->getSink()->setCenterFrequency(frequency + step*1000LL);
-            }
-        }
+        m_pendingDeviceStep += step;
+        flushDeviceSteps();
     }
     else
     {
@@ -801,57 +743,134 @@ void JogdialController::stepFrequency(int step)
     }
 }
 
-//! The jog wheel zooms the spectrum in spectrum control and steps a frequency otherwise
+//! Retune the device with the steps added up since the last retuning, unless this was done less than
+//! m_deviceRetuneMinMs ago and force is not set: the motion timer will do it then
+void JogdialController::flushDeviceSteps(bool force)
+{
+    if (m_pendingDeviceStep == 0) {
+        return;
+    }
+
+    if (dropStaleSelection())
+    {
+        m_pendingDeviceStep = 0; // the device is gone
+        updateChannels();
+        return;
+    }
+
+    if (!force && m_deviceRetuneClock.isValid() && (m_deviceRetuneClock.elapsed() < m_deviceRetuneMinMs))
+    {
+        startMotion(); // the retuning is for the next ticks
+        return;
+    }
+
+    const qint64 step = m_pendingDeviceStep;
+    m_pendingDeviceStep = 0;
+    m_deviceRetuneClock.start();
+    applyDeviceStep(step);
+}
+
+void JogdialController::applyDeviceStep(qint64 step)
+{
+    if (!m_selectedDevice) {
+        return;
+    }
+
+    DSPDeviceSourceEngine *sourceEngine = m_selectedDevice->getDeviceSourceEngine();
+    DSPDeviceSinkEngine *sinkEngine = m_selectedDevice->getDeviceSinkEngine();
+    DSPDeviceMIMOEngine *mimoEngine = m_selectedDevice->getDeviceMIMOEngine();
+
+    if (mimoEngine && mimoEngine->getMIMO())
+    {
+        // MIMO: act on the Rx or Tx stream of the selected channel (stream 0 if no channel is selected)
+        DeviceSampleMIMO *mimo = mimoEngine->getMIMO();
+        const int streamIndex = m_selectedChannel ? m_selectedChannel->getStreamIndex() : 0;
+
+        if (m_selectedChannel && (m_selectedChannel->getStreamType() == ChannelAPI::StreamSingleSource))
+        {
+            qint64 frequency = mimo->getSinkCenterFrequency(streamIndex);
+            mimo->setSinkCenterFrequency(frequency + step*1000LL, streamIndex);
+        }
+        else
+        {
+            qint64 frequency = mimo->getSourceCenterFrequency(streamIndex);
+            mimo->setSourceCenterFrequency(frequency + step*1000LL, streamIndex);
+        }
+    }
+
+    if (sourceEngine)
+    {
+        quint64 frequency = sourceEngine->getSource()->getCenterFrequency();
+        qDebug("JogdialController::applyDeviceStep: frequency: %llu", frequency);
+        sourceEngine->getSource()->setCenterFrequency(frequency + step*1000LL);
+    }
+
+    if (sinkEngine)
+    {
+        quint64 frequency = sinkEngine->getSink()->getCenterFrequency();
+        sinkEngine->getSink()->setCenterFrequency(frequency + step*1000LL);
+    }
+}
+
+//! The jog wheel zooms the spectrum in spectrum control and steps a frequency otherwise.
+//! The faster the wheel is turned the more each click counts
 void JogdialController::jogStep(int step)
 {
+    const double gain = jogGain((step > 0) ? 1 : -1);
+
     if (m_controlMode == ControlMode::Spectrum) {
-        zoomSpectrum(step);
+        zoomSpectrum(step, gain);
     } else {
-        stepFrequency(step);
+        const int scaled = qRound(step * gain);
+        stepFrequency((scaled != 0) ? scaled : ((step > 0) ? 1 : -1));
     }
 }
 
-//! The shuttle wheel pans the spectrum in spectrum control and steps a frequency otherwise
-void JogdialController::shuttleStep(int step)
+//! Acceleration of the jog wheel: 1 up to m_jogGainMinRate clicks per second then proportional to the click rate
+//! up to m_jogGainMax. A change of direction starts again from 1
+double JogdialController::jogGain(int direction)
 {
-    if (m_controlMode == ControlMode::Spectrum) {
-        panSpectrum(step);
-    } else {
-        stepFrequency(step);
+    double gain = 1.0;
+
+    if (m_jogClock.isValid() && (direction == m_lastJogDirection))
+    {
+        const qint64 interval = m_jogClock.elapsed();
+
+        if (interval > 0)
+        {
+            const double rate = 1000.0 / interval;
+
+            if (rate > m_jogGainMinRate) {
+                gain = std::min(m_jogGainMax, rate / m_jogGainMinRate);
+            }
+        }
     }
+
+    m_jogClock.start();
+    m_lastJogDirection = direction;
+    return gain;
 }
 
-//! step is +/- 1, 10, 100 or 1000 according to the modifier keys: the bigger the step the more each click zooms
-void JogdialController::zoomSpectrum(int step)
+//! step is +/- 1, 10, 100 or 1000 according to the modifier keys: the bigger the step the more each click zooms.
+//! The zoom is not applied at once: it is requested as a distance to cover that the motion timer animates
+void JogdialController::zoomSpectrum(int step, double gain)
 {
     const int magnitude = qAbs(step);
-    float ratio;
+    double ratio;
 
     if (magnitude >= 1000) {
-        ratio = 2.0f;
+        ratio = 2.0;
     } else if (magnitude >= 100) {
-        ratio = 1.5f;
+        ratio = 1.5;
     } else if (magnitude >= 10) {
-        ratio = 1.25f;
+        ratio = 1.25;
     } else {
-        ratio = 1.1f;
+        ratio = 1.1;
     }
 
-    controlSpectrum(MsgControlSpectrum::ZoomBy, (step > 0) ? ratio : 1.0f / ratio);
-}
-
-//! step is +/- 10^(n-1) with n the shuttle position (1 to 7): each position moves twice as fast as the previous one
-void JogdialController::panSpectrum(int step)
-{
-    int position = 0; // 0 to 6
-
-    for (int magnitude = qAbs(step); magnitude >= 10; magnitude /= 10) {
-        position++;
-    }
-
-    // From 1% to 64% of the displayed window width at each repeat
-    const float fraction = 0.01f * (1 << position);
-    controlSpectrum(MsgControlSpectrum::PanBy, (step > 0) ? fraction : -fraction);
+    const double logRatio = std::log(ratio) * gain * ((step > 0) ? 1.0 : -1.0);
+    m_zoomPending = std::max(-m_zoomPendingMax, std::min(m_zoomPendingMax, m_zoomPending + logRatio));
+    startMotion();
 }
 
 //! Send the zoom or pan command to the GUI that owns the spectrum of the device set of the selected channel.
@@ -877,7 +896,9 @@ void JogdialController::controlSpectrum(MsgControlSpectrum::Action action, float
 
 void JogdialController::setControlMode(ControlMode controlMode)
 {
-    m_repeatTimer.stop(); // a shuttle movement in progress was meant for the previous mode
+    // A movement in progress was meant for the previous mode
+    flushDeviceSteps(true);
+    stopMotion();
     m_controlMode = controlMode;
 
     if (m_guiMessageQueue) {
@@ -920,7 +941,107 @@ int JogdialController::getSelectedDeviceSetIndex() const
     return -1;
 }
 
-void JogdialController::handleRepeat()
+//! Shuttle ring position from -7 to 7. The speed follows it progressively, see handleMotion
+void JogdialController::setShuttlePosition(int position)
 {
-    shuttleStep(m_multiplier);
+    m_shuttlePosition = std::max(-m_shuttleMaxPosition, std::min(m_shuttleMaxPosition, position));
+
+    if (m_shuttlePosition != 0) {
+        startMotion();
+    }
+}
+
+//! Speed of the first ring position: steps/s (Hz/s for a channel, kHz/s for a device) or window widths/s
+double JogdialController::shuttleBaseVelocity() const
+{
+    switch (m_controlMode)
+    {
+    case ControlMode::Device: return m_deviceShuttleBase;
+    case ControlMode::Channel: return m_channelShuttleBase;
+    default: return m_spectrumShuttleBase;
+    }
+}
+
+//! Speed the ring position asks for: it grows geometrically from a position to the next
+double JogdialController::shuttleTargetVelocity() const
+{
+    if (m_shuttlePosition == 0) {
+        return 0.0;
+    }
+
+    const double ratio = (m_controlMode == ControlMode::Spectrum) ? m_spectrumShuttleRatio : m_frequencyShuttleRatio;
+    const double velocity = shuttleBaseVelocity() * std::pow(ratio, std::abs(m_shuttlePosition) - 1);
+    return (m_shuttlePosition > 0) ? velocity : -velocity;
+}
+
+void JogdialController::startMotion()
+{
+    if (!m_motionTimer.isActive())
+    {
+        m_motionClock.start();
+        m_motionTimer.start(m_motionIntervalMs);
+    }
+}
+
+void JogdialController::stopMotion()
+{
+    m_motionTimer.stop();
+    m_shuttlePosition = 0;
+    m_velocity = 0.0;
+    m_steps = 0.0;
+    m_zoomPending = 0.0;
+}
+
+//! Periodic update of everything that moves progressively:
+//! - the shuttle speed approaches the speed of the ring position and moves a frequency or pans the spectrum accordingly
+//! - the zoom requested by the jog wheel is animated
+//! - the device is retuned with the steps added up since the last time
+void JogdialController::handleMotion()
+{
+    // Limit the time step so that a stalled event loop does not result in a jump
+    const double dt = std::min(0.1, m_motionClock.restart() / 1000.0);
+    const double target = shuttleTargetVelocity();
+
+    const int timeConstantMs = (std::abs(target) < std::abs(m_velocity)) ? m_velocityDecelTimeConstantMs : m_velocityTimeConstantMs;
+    m_velocity += (target - m_velocity) * (1.0 - std::exp(-dt * 1000.0 / timeConstantMs));
+
+    if ((target == 0.0) && (std::abs(m_velocity) < 0.5 * shuttleBaseVelocity())) {
+        m_velocity = 0.0;
+    }
+
+    if (m_velocity != 0.0)
+    {
+        if (m_controlMode == ControlMode::Spectrum)
+        {
+            controlSpectrum(MsgControlSpectrum::PanBy, (float) (m_velocity * dt));
+        }
+        else
+        {
+            m_steps += m_velocity * dt;
+            const int whole = (int) m_steps; // truncated towards 0
+            m_steps -= whole;
+
+            if (whole != 0) {
+                stepFrequency(whole);
+            }
+        }
+    }
+
+    if (m_zoomPending != 0.0)
+    {
+        double applied = m_zoomPending * (1.0 - std::exp(-dt * 1000.0 / m_zoomTimeConstantMs));
+
+        if (std::abs(m_zoomPending - applied) < 0.002) { // close enough: finish
+            applied = m_zoomPending;
+        }
+
+        m_zoomPending -= applied;
+        controlSpectrum(MsgControlSpectrum::ZoomBy, (float) std::exp(applied));
+    }
+
+    flushDeviceSteps();
+
+    if ((m_velocity == 0.0) && (m_shuttlePosition == 0) && (m_zoomPending == 0.0) && (m_pendingDeviceStep == 0)) {
+        m_motionTimer.stop();
+    }
 }
