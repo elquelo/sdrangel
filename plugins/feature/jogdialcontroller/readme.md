@@ -57,46 +57,16 @@ It displays "D" when in device control, "C" when in channel control or "S" when 
 In spectrum control (S) the jog wheel and the shuttle wheel act on the frequency zoom of the spectrum and waterfall display instead of changing a frequency. The display controlled is the one of the device set the selected channel (4) belongs to. The frequency of the device or of the channel is not modified in this mode.
 
   - The **jog wheel** zooms in (right) or out (left) keeping the frequency of the selected channel in place on the display. If no channel is selected it zooms around the center of the displayed window. The Ctl and Shift keys select the zoom ratio of each click: no key: x1.1, Ctl key: x1.25, Shift key: x1.5, Ctl+Shift keys: x2. The jog acceleration applies to the zoom too and the zoom is animated: the display moves progressively towards the requested zoom. The zoom factor is limited between 1 (full span) and 50 as it is with the mouse wheel.
-  - The **shuttle wheel** moves the zoomed window towards lower frequencies (left positions) or higher frequencies (right positions) for as long as the position is maintained. The speed follows the position of the ring progressively and the further you go from the center the faster it is: the speed doubles from one position to the next, from 2% of the displayed width per second for &plusmn; 1 step to 128% per second for &plusmn; 7 steps. It has no effect when the full span is displayed.
-  - The **Home** key (K7) resets the zoom to the full span instead of resetting the channel frequency.
-  - The keys that move through the list of channels (K6 and K8) work as usual and select which display is controlled.
-
-<h2>Contour products and keyboard control</h2>
-
-<h3>Contour devices</h3>
-
-The Contour devices generally have a central "jog" wheel inside a spring loaded ring called the "shuttle" wheel plus a series of buttons.
-
-<b>ShuttleXpress layout</b>
-
-![ShuttleXpress layout](../../../doc/img/ShuttleXpressLayout.png)
-
-<b>ShuttlePRO layout</b>
-
-![ShuttlePRO layout](../../../doc/img/ShuttlePROLayout.png)
-
-The **jog wheel** is used to go up and down in discrete frequency units. You can use the Ctl and Shift keys on the keyboard simultaneously to select the frequency step:
-
-  - No key: &plusmn; 1 Hz for channels &plusmn; 1 kHz for devices
-  - Ctl key: &plusmn; 10 Hz for channels &plusmn; 10 kHz for devices
-  - Shift key: &plusmn; 100 Hz for channels &plusmn; 100 kHz for devices
-  - Ctl+Shift key: &plusmn; 1 kHz for channels &plusmn; 1 MHz for devices
-
-
-The **jog wheel** accelerates when it is turned quickly: up to 6 clicks per second each click counts for one step, above that each click counts for as many steps as the click rate is a multiple of 6, up to 25 steps. Changing the turning direction starts again with one step per click. The Ctl and Shift keys step is multiplied likewise.
-
-When controlling a device its frequency is changed at most 10 times per second. The steps requested in between are added up and applied together.
-
-The **shuttle wheel** has a central rest position and 7 positions on the left and 7 on the right. The left positions are used to go down in frequency and the right positions to go up. The frequency changes continuously as long as the shuttle position is maintained and stops at the rest (central) position. The speed follows the position of the ring progressively: it takes a fraction of a second to reach the speed of a new position and to stop when the ring is released. The further you go from the center the faster it goes. The speed is multiplied by about 3.16 (half a decade) from one position to the next as you move away from the center. Thus to summarize:
+  - The **shuttle wheel** moves the zoomed window towards lower frequencies (left positions) or higher frequencies (right positions) for as long as the position is maintained. The speed follows the position of the ring progressively: it takes a fraction of a second to reach the speed of a new position and to stop when the ring is released. The further you go from the center the faster it goes. The speed is multiplied by about 4.64 for channels and by about 3.16 (half a decade) for devices from one position to the next as you move away from the center. Thus to summarize:
 
   - Center: rest position stops moving
   - &plusmn; 1 step: &plusmn; 30 Hz/s for channels, &plusmn; 3 kHz/s for devices
-  - &plusmn; 2 steps: &plusmn; 95 Hz/s for channels, &plusmn; 9.5 kHz/s for devices
-  - &plusmn; 3 steps: &plusmn; 300 Hz/s for channels, &plusmn; 30 kHz/s for devices
-  - &plusmn; 4 steps: &plusmn; 950 Hz/s for channels, &plusmn; 95 kHz/s for devices
-  - &plusmn; 5 steps: &plusmn; 3 kHz/s for channels, &plusmn; 300 kHz/s for devices
-  - &plusmn; 6 steps: &plusmn; 9.5 kHz/s for channels, &plusmn; 950 kHz/s for devices
-  - &plusmn; 7 steps: &plusmn; 30 kHz/s for channels, &plusmn; 3 MHz/s for devices
+  - &plusmn; 2 steps: &plusmn; 140 Hz/s for channels, &plusmn; 9.5 kHz/s for devices
+  - &plusmn; 3 steps: &plusmn; 650 Hz/s for channels, &plusmn; 30 kHz/s for devices
+  - &plusmn; 4 steps: &plusmn; 3 kHz/s for channels, &plusmn; 95 kHz/s for devices
+  - &plusmn; 5 steps: &plusmn; 14 kHz/s for channels, &plusmn; 300 kHz/s for devices
+  - &plusmn; 6 steps: &plusmn; 65 kHz/s for channels, &plusmn; 950 kHz/s for devices
+  - &plusmn; 7 steps: &plusmn; 300 kHz/s for channels, &plusmn; 3 MHz/s for devices
 
 The **keys** are mapped as follows:
 
