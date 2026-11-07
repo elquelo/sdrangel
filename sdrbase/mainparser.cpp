@@ -46,7 +46,7 @@ MainParser::MainParser() :
     m_startOption("start", "Start all devices and features")
 {
 
-    m_serverAddress = "";   // Bind to any address
+    m_serverAddress = "127.0.0.1";   // Bind to loopback only by default (use -a 0.0.0.0 to expose the Web API on the network)
     m_serverPort = 8091;
     m_scratch = false;
     m_soapy = false;
