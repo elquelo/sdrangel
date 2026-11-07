@@ -281,14 +281,14 @@ struct MotionFieldDef
 };
 
 const MotionFieldDef motionFieldDefs[] = {
-    {"Speed 1", 0, 350, "Speed at ring position 1 (logarithmic scale)"},
-    {"Ratio", 110, 800, "Speed factor between two successive ring positions"},
-    {"Accel", 10, 1000, "Time to follow the ring when speeding up, in ms (lower is quicker)"},
-    {"Brake", 10, 1000, "Time to follow the ring when slowing down, in ms (lower is quicker)"},
-    {"Jog from", 2, 20, "Jog clicks per second above which the jog accelerates"},
-    {"Jog max", 1, 100, "Maximum acceleration of the jog"},
-    {"Zoom", 20, 500, "Smoothing time of the zoom animation, in ms (spectrum only)"},
-    {"Retune", 20, 500, "Minimum delay between two retunings of the device, in ms (device only)"},
+    {"Speed 1", 0, 350, "Ring: speed at position 1 (logarithmic scale)"},
+    {"Ratio", 110, 800, "Ring: speed factor between two successive positions"},
+    {"Accel", 10, 1000, "Ring: time to follow the ring when speeding up, in ms (lower is quicker)"},
+    {"Brake", 10, 1000, "Ring: time to follow the ring when slowing down, in ms (lower is quicker)"},
+    {"Start at", 2, 20, "Jog: clicks per second above which the jog accelerates"},
+    {"Max gain", 1, 100, "Jog: maximum acceleration of the jog"},
+    {"Zoom smooth", 20, 500, "Jog: smoothing time of the zoom animation, in ms (spectrum only)"},
+    {"Retune", 20, 500, "Minimum delay between two retunings of the device, in ms (device only): applies to jog and ring"},
 };
 
 const double motionBaseMin[] = {0.1, 1.0, 0.001}; //!< Lowest value of the speed slider: kHz/s, Hz/s, window widths/s
@@ -316,8 +316,29 @@ void JogdialControllerGUI::buildMotionUI()
     QGridLayout *grid = new QGridLayout();
     grid->setColumnStretch(1, 1);
 
+    int gridRow = 0;
+
     for (int f = 0; f < MfCount; f++)
     {
+        const char *header = nullptr;
+
+        if (f == MfBase) {
+            header = "Ring (shuttle)";
+        } else if (f == MfJogRate) {
+            header = "Jog wheel";
+        } else if (f == MfRetune) {
+            header = "Jog and ring";
+        }
+
+        if (header)
+        {
+            QLabel *title = new QLabel(tr(header));
+            QFont font = title->font();
+            font.setBold(true);
+            title->setFont(font);
+            grid->addWidget(title, gridRow++, 0, 1, 3);
+        }
+
         MotionRow& row = m_motionRows[f];
         row.m_label = new QLabel(tr(motionFieldDefs[f].m_name));
         row.m_label->setToolTip(tr(motionFieldDefs[f].m_tooltip));
@@ -328,9 +349,10 @@ void JogdialControllerGUI::buildMotionUI()
         row.m_value = new QLabel();
         row.m_value->setMinimumWidth(80);
         row.m_value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        grid->addWidget(row.m_label, f, 0);
-        grid->addWidget(row.m_slider, f, 1);
-        grid->addWidget(row.m_value, f, 2);
+        grid->addWidget(row.m_label, gridRow, 0);
+        grid->addWidget(row.m_slider, gridRow, 1);
+        grid->addWidget(row.m_value, gridRow, 2);
+        gridRow++;
         connect(row.m_slider, &QSlider::valueChanged, this, [this, f](int value) { onMotionSliderChanged(f, value); });
     }
 
@@ -441,7 +463,7 @@ void JogdialControllerGUI::displayMotion()
         speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_shuttleBase * std::pow(p.m_shuttleRatio, position - 1))));
     }
 
-    m_motionSpeeds->setText(tr("Ring ") + speeds.join(tr("  ")));
+    m_motionSpeeds->setText(tr("Ring positions: ") + speeds.join(tr("  ")));
 
     if (m_motionMode->currentIndex() != m_displayedMode)
     {
@@ -478,7 +500,7 @@ void JogdialControllerGUI::onMotionSliderChanged(int field, int sliderValue)
         speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_shuttleBase * std::pow(p.m_shuttleRatio, position - 1))));
     }
 
-    m_motionSpeeds->setText(tr("Ring ") + speeds.join(tr("  ")));
+    m_motionSpeeds->setText(tr("Ring positions: ") + speeds.join(tr("  ")));
 
     m_settingsKeys.append("motion");
     applySettings();
