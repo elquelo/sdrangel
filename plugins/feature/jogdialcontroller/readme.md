@@ -54,11 +54,11 @@ It displays "D" when in device control, "C" when in channel control or "S" when 
 
 <h3>6: Motion parameters</h3>
 
-The "Motion" section sets how the shuttle ring and the jog wheel behave, separately for each control type (device, channel, spectrum). The combo box selects the type edited; it follows the control type in use. Changes apply at once and are saved with the plugin settings. "Defaults" restores the values of the selected type. The controls do not take the keyboard focus so using them does not interrupt the control.
+The "Motion" section sets how the shuttle ring and the jog wheel behave, separately for each control type (device, channel, spectrum). The combo box selects the type edited; it follows the control type in use. Changes apply at once and are saved with the plugin settings. "Defaults" restores the values of the selected type. Each slider has a graduated scale in proportion to its values. The controls do not take the keyboard focus so using them does not interrupt the control.
 
-Ring (shuttle):
+Ring:
 
-  - **Speed**: a slider with two handles. The left handle is the speed of ring position 1 (the slowest), the right handle the speed of position 7 (the fastest). The positions in between follow a regular progression, shown on the last line ("Ring positions") together with the factor between two successive positions. Units: kHz/s for a device, Hz/s for a channel, percent of the displayed window per second for the spectrum
+  - **Speed**: a slider with two handles. The left handle is the speed of ring position 1 (the slowest), the right handle the speed of position 7 (the fastest). The positions in between follow a regular progression. The handles stop on values of one significant digit (1, 2, 3 ... 9 times a power of ten) and the two values are shown on the right. Units: kHz/s for a device, Hz/s for a channel, percent of the displayed window per second for the spectrum
   - **Reaction**: how quickly the movement follows the ring, from smooth (left, about 250 ms) to snappy (right, about 20 ms). It applies when speeding up and slowing down, and to the animation of the zoom
 
 Jog wheel:

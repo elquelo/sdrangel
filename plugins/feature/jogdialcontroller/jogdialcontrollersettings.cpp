@@ -82,10 +82,10 @@ JogdialControllerSettings::MotionParams JogdialControllerSettings::defaultMotion
         p.m_ringMax = 300000.0;
         p.m_jogStep = 1.0;
     }
-    else // spectrum: 2 % to 128 % of the window per second, a click zooms by 10 %
+    else // spectrum: 2 % to 100 % of the window per second, a click zooms by 10 %
     {
         p.m_ringMin = 0.02;
-        p.m_ringMax = 1.28;
+        p.m_ringMax = 1.0;
         p.m_jogStep = 0.10;
     }
 

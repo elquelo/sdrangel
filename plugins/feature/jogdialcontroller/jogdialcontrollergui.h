@@ -80,7 +80,7 @@ private:
 	QPointer<QShortcut> m_focusShortcut; //!< Takes the keyboard focus from any window of the application while the plugin is started
 
 	JogdialRangeSlider *m_ringRange{nullptr};   //!< Speed of the first and last ring positions
-	QLabel *m_ringRatio{nullptr};
+	QLabel *m_ringRangeValue{nullptr};
 	QSlider *m_reaction{nullptr};
 	QLabel *m_reactionValue{nullptr};
 	QSlider *m_jogStep{nullptr};
@@ -89,7 +89,10 @@ private:
 	QLabel *m_jogAccelValue{nullptr};
 	QComboBox *m_motionMode{nullptr};
 	QPushButton *m_motionDefaults{nullptr};
-	QLabel *m_motionSpeeds{nullptr};
+	JogdialScale *m_speedScale{nullptr};
+	JogdialScale *m_reactionScale{nullptr};
+	JogdialScale *m_clickScale{nullptr};
+	JogdialScale *m_accelScale{nullptr};
 	int m_displayedMode{0};
 
 	explicit JogdialControllerGUI(PluginAPI* pluginAPI, FeatureUISet *featureUISet, Feature *feature, QWidget* parent = nullptr);
@@ -110,7 +113,9 @@ private:
 	int ringAxis(double value) const;
 	double jogStepValue(int slider) const;
 	int jogStepSlider(double value) const;
+	void displayMotionScales();
 	static QString formatSpeed(int mode, double value);
+	static double roundToOneDigit(double value);
 
 private slots:
 	void onMenuDialogCalled(const QPoint &p);

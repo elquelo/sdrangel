@@ -324,35 +324,38 @@ void JogdialControllerGUI::buildMotionUI()
         row++;
     };
 
-    addTitle(tr("Ring (shuttle)"));
+    addTitle(tr("Ring"));
 
     QLabel *rangeLabel = new QLabel(tr("Speed"));
     const QString rangeTip = tr("Left handle: speed of ring position 1. Right handle: speed of position 7. The positions in between follow a regular progression");
     rangeLabel->setToolTip(rangeTip);
     m_ringRange = new JogdialRangeSlider();
     m_ringRange->setToolTip(rangeTip);
-    m_ringRatio = new QLabel();
-    m_ringRatio->setMinimumWidth(70);
-    m_ringRatio->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_ringRangeValue = new QLabel();
+    m_ringRangeValue->setMinimumWidth(70);
+    m_ringRangeValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     grid->addWidget(rangeLabel, row, 0);
     grid->addWidget(m_ringRange, row, 1);
-    grid->addWidget(m_ringRatio, row, 2);
+    grid->addWidget(m_ringRangeValue, row, 2);
     row++;
+    m_speedScale = new JogdialScale(10);
+    grid->addWidget(m_speedScale, row++, 1);
 
     addSlider(tr("Reaction"), tr("How quickly the movement follows the ring: smooth on the left, snappy on the right"), m_reaction, m_reactionValue);
     m_reaction->setRange(0, 100);
+    m_reactionScale = new JogdialScale();
+    grid->addWidget(m_reactionScale, row++, 1);
 
     addTitle(tr("Jog wheel"));
     addSlider(tr("Click"), tr("Size of one jog click: Hz in channel mode, kHz in device mode, zoom per click in spectrum mode"), m_jogStep, m_jogStepValue);
+    m_clickScale = new JogdialScale();
+    grid->addWidget(m_clickScale, row++, 1);
     addSlider(tr("Acceleration"), tr("How much the jog accelerates when turned fast: off on the left, strong on the right"), m_jogAccel, m_jogAccelValue);
     m_jogAccel->setRange(0, 100);
+    m_accelScale = new JogdialScale();
+    grid->addWidget(m_accelScale, row++, 1);
 
     layout->addLayout(grid);
-
-    m_motionSpeeds = new QLabel();
-    m_motionSpeeds->setWordWrap(true);
-    m_motionSpeeds->setToolTip(tr("Resulting speed of ring positions 1 to 7"));
-    layout->addWidget(m_motionSpeeds);
 
     m_ringRange->onChanged = [this](int low, int high) {
         JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
@@ -394,7 +397,7 @@ void JogdialControllerGUI::buildMotionUI()
 //! Value (kHz/s, Hz/s or window widths per second) at a position of the speed axis (100 units per decade)
 double JogdialControllerGUI::ringValue(int axis) const
 {
-    return ringAxisMin[m_displayedMode] * std::pow(10.0, axis / 100.0);
+    return roundToOneDigit(ringAxisMin[m_displayedMode] * std::pow(10.0, axis / 100.0));
 }
 
 int JogdialControllerGUI::ringAxis(double value) const
@@ -432,12 +435,23 @@ QString JogdialControllerGUI::formatSpeed(int mode, double value)
     }
 }
 
-//! Texts next to the controls and the speeds of the ring positions, from the parameters of the displayed mode
+//! One significant digit: 39.8 becomes 40
+double JogdialControllerGUI::roundToOneDigit(double value)
+{
+    if (value <= 0.0) {
+        return value;
+    }
+
+    const double scale = std::pow(10.0, std::floor(std::log10(value)));
+    return std::round(value / scale) * scale;
+}
+
+//! Texts next to the controls, from the parameters of the displayed mode
 void JogdialControllerGUI::displayMotionTexts()
 {
     const JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
 
-    m_ringRatio->setText(QString("x%1 / step").arg(p.ringRatio(), 0, 'f', 1));
+    m_ringRangeValue->setText(formatSpeed(m_displayedMode, p.m_ringMin) + "\n" + formatSpeed(m_displayedMode, p.m_ringMax));
     m_reactionValue->setText(QString("%1 ms").arg(p.reactionMs()));
 
     if (m_displayedMode == 2) {
@@ -447,14 +461,99 @@ void JogdialControllerGUI::displayMotionTexts()
     }
 
     m_jogAccelValue->setText((p.m_jogAccel == 0) ? tr("off") : QString("%1 %").arg(p.m_jogAccel));
+}
 
-    QStringList speeds;
+namespace {
+QString shortNumber(double value)
+{
+    return QString::number(value, 'g', 3);
+}
 
-    for (int position = 1; position <= 7; position++) {
-        speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_ringMin * std::pow(p.ringRatio(), position - 1))));
+QString shortHz(double hz)
+{
+    if (hz >= 1e6) {
+        return shortNumber(hz / 1e6) + "M";
+    } else if (hz >= 1e3) {
+        return shortNumber(hz / 1e3) + "k";
+    } else {
+        return shortNumber(hz);
+    }
+}
+}
+
+//! Graduations under the sliders, in proportion to the values. Light ticks have no label
+void JogdialControllerGUI::displayMotionScales()
+{
+    typedef JogdialScale::Tick Tick;
+    const int decades = ringAxisDecades[m_displayedMode];
+
+    // Speed: a main tick per decade, light ticks at 2 and 5
+    QVector<Tick> speed;
+
+    for (int d = 0; d <= decades; d++)
+    {
+        const double value = ringAxisMin[m_displayedMode] * std::pow(10.0, d);
+        const QString label = (m_displayedMode == 2) ? shortNumber(value * 100.0) + "%" : shortHz((m_displayedMode == 0) ? value * 1000.0 : value);
+        speed.append({(double) d / decades, label});
+
+        if (d < decades)
+        {
+            speed.append({(d + 0.301) / decades, QString()});
+            speed.append({(d + 0.699) / decades, QString()});
+        }
     }
 
-    m_motionSpeeds->setText(tr("Ring positions: ") + speeds.join(tr("  ")));
+    m_speedScale->setTicks(speed);
+
+    // Reaction: the slider is linear in the logarithm of the time constant (250 ms to 20 ms)
+    QVector<Tick> reaction;
+    const int mainMs[] = {250, 150, 100, 60, 40, 20};
+    const int lightMs[] = {200, 80, 30};
+
+    for (int ms : mainMs) {
+        reaction.append({std::log(ms / 250.0) / std::log(20.0 / 250.0), QString::number(ms)});
+    }
+    for (int ms : lightMs) {
+        reaction.append({std::log(ms / 250.0) / std::log(20.0 / 250.0), QString()});
+    }
+
+    m_reactionScale->setTicks(reaction);
+
+    // Click: logarithmic 1 to 1000 (channel, device) or linear 2 to 50 percent (spectrum)
+    QVector<Tick> click;
+
+    if (m_displayedMode == 2)
+    {
+        for (int v = 2; v <= 50; v += 4) {
+            click.append({(v - 2) / 48.0, QString()});
+        }
+        for (int v : {2, 10, 20, 30, 40, 50}) {
+            click.append({(v - 2) / 48.0, QString("%1%").arg(v)});
+        }
+    }
+    else
+    {
+        for (int d = 0; d <= 3; d++)
+        {
+            click.append({d / 3.0, shortHz(std::pow(10.0, d))});
+
+            if (d < 3)
+            {
+                click.append({(d + 0.301) / 3.0, QString()});
+                click.append({(d + 0.699) / 3.0, QString()});
+            }
+        }
+    }
+
+    m_clickScale->setTicks(click);
+
+    QVector<Tick> accel;
+
+    for (int v = 0; v <= 100; v += 10) {
+        accel.append({v / 100.0, (v == 0) ? tr("off") : (((v == 50) || (v == 100)) ? QString::number(v) : QString())});
+    }
+
+    m_accelScale->setTicks(accel);
 }
 
 //! Show the parameters of the selected mode on the controls
@@ -462,6 +561,18 @@ void JogdialControllerGUI::displayMotion()
 {
     const JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
 
+    // The handles stop on values of one significant digit: 1, 2, 3 ... 9 times a power of ten
+    QVector<int> candidates;
+
+    for (int d = 0; d < ringAxisDecades[m_displayedMode]; d++)
+    {
+        for (int k = 1; k <= 9; k++) {
+            candidates.append((int) std::lround(100.0 * (d + std::log10((double) k))));
+        }
+    }
+
+    candidates.append(100 * ringAxisDecades[m_displayedMode]);
+    m_ringRange->setCandidates(candidates);
     m_ringRange->setBounds(0, 100 * ringAxisDecades[m_displayedMode], 40);
     m_ringRange->setValues(ringAxis(p.m_ringMin), ringAxis(p.m_ringMax));
 
@@ -492,6 +603,7 @@ void JogdialControllerGUI::displayMotion()
     }
 
     displayMotionTexts();
+    displayMotionScales();
 }
 
 //! A control was moved: show the consequences and send the parameters to the controller

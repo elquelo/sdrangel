@@ -21,7 +21,10 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QFontMetrics>
 #include <QPalette>
+#include <QString>
+#include <QVector>
 #include <QWidget>
 
 //! Slider with two handles that selects a range of integer values. It never takes the keyboard focus.
@@ -50,6 +53,9 @@ public:
         m_low = std::max(m_min, std::min(m_high - m_gap, low));
         update();
     }
+
+    //! Values the handles can take (ascending, including the bounds). Empty: any value
+    void setCandidates(const QVector<int>& candidates) { m_candidates = candidates; }
 
     int low() const { return m_low; }
     int high() const { return m_high; }
@@ -108,6 +114,7 @@ private:
     int m_low{0};
     int m_high{100};
     int m_dragged{0}; //!< 0: none, 1: low handle, 2: high handle
+    QVector<int> m_candidates;
     static const int m_margin = 10;
     static const int m_radius = 7;
 
@@ -126,23 +133,137 @@ private:
         return m_margin + (int) ((double) (value - m_min) / (m_max - m_min) * span);
     }
 
+    int nearestCandidate(int value) const
+    {
+        int best = m_candidates.first();
+
+        for (int c : m_candidates)
+        {
+            if (std::abs(c - value) < std::abs(best - value)) {
+                best = c;
+            }
+        }
+
+        return best;
+    }
+
+    int floorCandidate(int value) const //!< Highest candidate not above value
+    {
+        int best = m_min;
+
+        for (int c : m_candidates)
+        {
+            if ((c <= value) && (c > best)) {
+                best = c;
+            }
+        }
+
+        return best;
+    }
+
+    int ceilCandidate(int value) const //!< Lowest candidate not below value
+    {
+        int best = m_max;
+
+        for (int c : m_candidates)
+        {
+            if ((c >= value) && (c < best)) {
+                best = c;
+            }
+        }
+
+        return best;
+    }
+
     void moveTo(int x)
     {
         const int span = std::max(1, width() - 2*m_margin);
-        const int value = m_min + (int) std::lround((double) (x - m_margin) / span * (m_max - m_min));
+        int value = m_min + (int) std::lround((double) (x - m_margin) / span * (m_max - m_min));
+        value = std::max(m_min, std::min(m_max, value));
         const int oldLow = m_low;
         const int oldHigh = m_high;
 
-        if (m_dragged == 1) {
-            setValues(std::min(value, m_high - m_gap), m_high);
-        } else if (m_dragged == 2) {
-            setValues(m_low, std::max(value, m_low + m_gap));
+        if (!m_candidates.isEmpty()) {
+            value = nearestCandidate(value);
+        }
+
+        if (m_dragged == 1)
+        {
+            const int limit = m_candidates.isEmpty() ? m_high - m_gap : floorCandidate(m_high - m_gap);
+            setValues(std::min(value, limit), m_high);
+        }
+        else if (m_dragged == 2)
+        {
+            const int limit = m_candidates.isEmpty() ? m_low + m_gap : ceilCandidate(m_low + m_gap);
+            setValues(m_low, std::max(value, limit));
         }
 
         if (((m_low != oldLow) || (m_high != oldHigh)) && onChanged) {
             onChanged(m_low, m_high);
         }
     }
+};
+
+//! Graduated scale drawn under a slider: tick positions are fractions (0 to 1) of the slider groove.
+//! Ticks with a label are the main ones. Drawn softly so as to stay in the background
+class JogdialScale : public QWidget
+{
+public:
+    struct Tick
+    {
+        double m_position;
+        QString m_label;
+    };
+
+    explicit JogdialScale(int margin = 9, QWidget *parent = nullptr) :
+        QWidget(parent),
+        m_margin(margin)
+    {
+        setFocusPolicy(Qt::NoFocus);
+        setFixedHeight(24);
+    }
+
+    void setTicks(const QVector<Tick>& ticks)
+    {
+        m_ticks = ticks;
+        update();
+    }
+
+    QSize sizeHint() const override { return QSize(100, 24); }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        QFont small = font();
+        small.setPointSizeF(std::max(7.0, font().pointSizeF() * 0.85));
+        painter.setFont(small);
+        const QFontMetrics metrics(small);
+        const QColor base = palette().color(QPalette::WindowText);
+        const int span = std::max(1, width() - 2*m_margin);
+
+        for (const Tick& tick : m_ticks)
+        {
+            const bool main = !tick.m_label.isEmpty();
+            const int x = m_margin + (int) std::lround(tick.m_position * span);
+            QColor color = base;
+            color.setAlpha(main ? 100 : 50);
+            painter.setPen(color);
+            painter.drawLine(x, 0, x, main ? 6 : 3);
+
+            if (main)
+            {
+                color.setAlpha(150);
+                painter.setPen(color);
+                const int tw = metrics.horizontalAdvance(tick.m_label);
+                painter.drawText(x - tw/2, 8 + metrics.ascent(), tick.m_label);
+            }
+        }
+    }
+
+private:
+    int m_margin;
+    QVector<Tick> m_ticks;
 };
 
 #endif // INCLUDE_FEATURE_JOGDIALRANGESLIDER_H_
