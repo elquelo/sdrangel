@@ -67,27 +67,26 @@ const QStringList JogdialControllerSettings::m_channelURIs = {
 JogdialControllerSettings::MotionParams JogdialControllerSettings::defaultMotionParams(int mode)
 {
     MotionParams p;
-    p.m_accelMs = 60;
-    p.m_decelMs = 60;
-    p.m_jogGainMinRate = 6.0;
-    p.m_jogGainMax = 25.0;
-    p.m_zoomMs = 120;
-    p.m_retuneMs = 100;
+    p.m_reaction = 56;  // about 60 ms
+    p.m_jogAccel = 50;
 
-    if (mode == 0) // device
+    if (mode == 0) // device: 3 kHz/s to 3 MHz/s, a click is 1 kHz
     {
-        p.m_shuttleBase = 3.0;
-        p.m_shuttleRatio = 3.1622776601683795;
+        p.m_ringMin = 3.0;
+        p.m_ringMax = 3000.0;
+        p.m_jogStep = 1.0;
     }
-    else if (mode == 1) // channel
+    else if (mode == 1) // channel: 30 Hz/s to 300 kHz/s, a click is 1 Hz
     {
-        p.m_shuttleBase = 30.0;
-        p.m_shuttleRatio = 4.641588833612778;
+        p.m_ringMin = 30.0;
+        p.m_ringMax = 300000.0;
+        p.m_jogStep = 1.0;
     }
-    else // spectrum
+    else // spectrum: 2 % to 128 % of the window per second, a click zooms by 10 %
     {
-        p.m_shuttleBase = 0.02;
-        p.m_shuttleRatio = 2.0;
+        p.m_ringMin = 0.02;
+        p.m_ringMax = 1.28;
+        p.m_jogStep = 0.10;
     }
 
     return p;
@@ -136,15 +135,12 @@ QByteArray JogdialControllerSettings::serialize() const
 
     for (int i = 0; i < m_modeCount; i++)
     {
-        const quint32 id = 20 + 10*i;
-        s.writeDouble(id, m_motion[i].m_shuttleBase);
-        s.writeDouble(id + 1, m_motion[i].m_shuttleRatio);
-        s.writeS32(id + 2, m_motion[i].m_accelMs);
-        s.writeS32(id + 3, m_motion[i].m_decelMs);
-        s.writeDouble(id + 4, m_motion[i].m_jogGainMinRate);
-        s.writeDouble(id + 5, m_motion[i].m_jogGainMax);
-        s.writeS32(id + 6, m_motion[i].m_zoomMs);
-        s.writeS32(id + 7, m_motion[i].m_retuneMs);
+        const quint32 id = 100 + 10*i;
+        s.writeDouble(id, m_motion[i].m_ringMin);
+        s.writeDouble(id + 1, m_motion[i].m_ringMax);
+        s.writeS32(id + 2, m_motion[i].m_reaction);
+        s.writeDouble(id + 3, m_motion[i].m_jogStep);
+        s.writeS32(id + 4, m_motion[i].m_jogAccel);
     }
 
     return s.final();
@@ -194,26 +190,20 @@ bool JogdialControllerSettings::deserialize(const QByteArray& data)
 
         for (int i = 0; i < m_modeCount; i++)
         {
-            const quint32 id = 20 + 10*i;
+            const quint32 id = 100 + 10*i;
             const MotionParams def = defaultMotionParams(i);
             MotionParams& p = m_motion[i];
-            d.readDouble(id, &p.m_shuttleBase, def.m_shuttleBase);
-            d.readDouble(id + 1, &p.m_shuttleRatio, def.m_shuttleRatio);
-            d.readS32(id + 2, &p.m_accelMs, def.m_accelMs);
-            d.readS32(id + 3, &p.m_decelMs, def.m_decelMs);
-            d.readDouble(id + 4, &p.m_jogGainMinRate, def.m_jogGainMinRate);
-            d.readDouble(id + 5, &p.m_jogGainMax, def.m_jogGainMax);
-            d.readS32(id + 6, &p.m_zoomMs, def.m_zoomMs);
-            d.readS32(id + 7, &p.m_retuneMs, def.m_retuneMs);
+            d.readDouble(id, &p.m_ringMin, def.m_ringMin);
+            d.readDouble(id + 1, &p.m_ringMax, def.m_ringMax);
+            d.readS32(id + 2, &p.m_reaction, def.m_reaction);
+            d.readDouble(id + 3, &p.m_jogStep, def.m_jogStep);
+            d.readS32(id + 4, &p.m_jogAccel, def.m_jogAccel);
             // Keep the values in the ranges that make sense whatever is stored
-            p.m_shuttleBase = std::max(1e-4, std::min(1e6, p.m_shuttleBase));
-            p.m_shuttleRatio = std::max(1.05, std::min(10.0, p.m_shuttleRatio));
-            p.m_accelMs = std::max(5, std::min(5000, p.m_accelMs));
-            p.m_decelMs = std::max(5, std::min(5000, p.m_decelMs));
-            p.m_jogGainMinRate = std::max(1.0, std::min(50.0, p.m_jogGainMinRate));
-            p.m_jogGainMax = std::max(1.0, std::min(200.0, p.m_jogGainMax));
-            p.m_zoomMs = std::max(5, std::min(5000, p.m_zoomMs));
-            p.m_retuneMs = std::max(10, std::min(2000, p.m_retuneMs));
+            p.m_ringMin = std::max(1e-4, std::min(1e6, p.m_ringMin));
+            p.m_ringMax = std::max(p.m_ringMin * 1.5, std::min(1e7, p.m_ringMax));
+            p.m_reaction = std::max(0, std::min(100, p.m_reaction));
+            p.m_jogStep = std::max(0.01, std::min(1000.0, p.m_jogStep));
+            p.m_jogAccel = std::max(0, std::min(100, p.m_jogAccel));
         }
 
         return true;

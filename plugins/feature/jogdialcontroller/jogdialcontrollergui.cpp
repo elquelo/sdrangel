@@ -272,29 +272,13 @@ void JogdialControllerGUI::displaySettings()
 }
 
 namespace {
-struct MotionFieldDef
-{
-    const char *m_name;
-    int m_min;
-    int m_max;
-    const char *m_tooltip;
-};
-
-const MotionFieldDef motionFieldDefs[] = {
-    {"Speed 1", 0, 350, "Ring: speed at position 1 (logarithmic scale)"},
-    {"Ratio", 110, 800, "Ring: speed factor between two successive positions"},
-    {"Accel", 10, 1000, "Ring: time to follow the ring when speeding up, in ms (lower is quicker)"},
-    {"Brake", 10, 1000, "Ring: time to follow the ring when slowing down, in ms (lower is quicker)"},
-    {"Start at", 2, 20, "Jog: clicks per second above which the jog accelerates"},
-    {"Max gain", 1, 100, "Jog: maximum acceleration of the jog"},
-    {"Zoom smooth", 20, 500, "Jog: smoothing time of the zoom animation, in ms (spectrum only)"},
-    {"Retune", 20, 500, "Minimum delay between two retunings of the device, in ms (device only): applies to jog and ring"},
-};
-
-const double motionBaseMin[] = {0.1, 1.0, 0.001}; //!< Lowest value of the speed slider: kHz/s, Hz/s, window widths/s
+//! Speed axis of the range slider: lowest speed and number of decades, per mode (kHz/s, Hz/s, window widths/s)
+const double ringAxisMin[] = {0.1, 1.0, 0.001};
+const int ringAxisDecades[] = {5, 6, 4};
 }
 
-//! Build the sliders of the motion parameters in the "Motion" section
+//! Build the controls of the motion parameters in the "Motion" section: for each mode the speed range of the
+//! ring (one slider with two handles), how quickly it reacts, the size of a jog click and the jog acceleration
 void JogdialControllerGUI::buildMotionUI()
 {
     QVBoxLayout *layout = ui->motionLayout;
@@ -304,7 +288,7 @@ void JogdialControllerGUI::buildMotionUI()
     m_motionMode = new QComboBox();
     m_motionMode->addItems({tr("D device"), tr("C channel"), tr("S spectrum")});
     m_motionMode->setFocusPolicy(Qt::NoFocus); // the keys must stay with the controller
-    m_motionMode->setToolTip(tr("Control mode whose jog and ring parameters are edited (follows the mode in use)"));
+    m_motionMode->setToolTip(tr("Control mode whose parameters are edited (follows the mode in use)"));
     m_motionDefaults = new QPushButton(tr("Defaults"));
     m_motionDefaults->setFocusPolicy(Qt::NoFocus);
     m_motionDefaults->setToolTip(tr("Restore the default parameters of this mode"));
@@ -313,48 +297,55 @@ void JogdialControllerGUI::buildMotionUI()
     top->addWidget(m_motionDefaults);
     layout->addLayout(top);
 
+    QFont bold = font();
+    bold.setBold(true);
     QGridLayout *grid = new QGridLayout();
     grid->setColumnStretch(1, 1);
+    int row = 0;
 
-    int gridRow = 0;
+    auto addTitle = [&](const QString& text) {
+        QLabel *title = new QLabel(text);
+        title->setFont(bold);
+        grid->addWidget(title, row++, 0, 1, 3);
+    };
 
-    for (int f = 0; f < MfCount; f++)
-    {
-        const char *header = nullptr;
+    auto addSlider = [&](const QString& name, const QString& tip, QSlider*& slider, QLabel*& value) {
+        QLabel *label = new QLabel(name);
+        label->setToolTip(tip);
+        slider = new QSlider(Qt::Horizontal);
+        slider->setFocusPolicy(Qt::NoFocus);
+        slider->setToolTip(tip);
+        value = new QLabel();
+        value->setMinimumWidth(70);
+        value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        grid->addWidget(label, row, 0);
+        grid->addWidget(slider, row, 1);
+        grid->addWidget(value, row, 2);
+        row++;
+    };
 
-        if (f == MfBase) {
-            header = "Ring (shuttle)";
-        } else if (f == MfJogRate) {
-            header = "Jog wheel";
-        } else if (f == MfRetune) {
-            header = "Jog and ring";
-        }
+    addTitle(tr("Ring (shuttle)"));
 
-        if (header)
-        {
-            QLabel *title = new QLabel(tr(header));
-            QFont font = title->font();
-            font.setBold(true);
-            title->setFont(font);
-            grid->addWidget(title, gridRow++, 0, 1, 3);
-        }
+    QLabel *rangeLabel = new QLabel(tr("Speed"));
+    const QString rangeTip = tr("Left handle: speed of ring position 1. Right handle: speed of position 7. The positions in between follow a regular progression");
+    rangeLabel->setToolTip(rangeTip);
+    m_ringRange = new JogdialRangeSlider();
+    m_ringRange->setToolTip(rangeTip);
+    m_ringRatio = new QLabel();
+    m_ringRatio->setMinimumWidth(70);
+    m_ringRatio->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    grid->addWidget(rangeLabel, row, 0);
+    grid->addWidget(m_ringRange, row, 1);
+    grid->addWidget(m_ringRatio, row, 2);
+    row++;
 
-        MotionRow& row = m_motionRows[f];
-        row.m_label = new QLabel(tr(motionFieldDefs[f].m_name));
-        row.m_label->setToolTip(tr(motionFieldDefs[f].m_tooltip));
-        row.m_slider = new QSlider(Qt::Horizontal);
-        row.m_slider->setRange(motionFieldDefs[f].m_min, motionFieldDefs[f].m_max);
-        row.m_slider->setFocusPolicy(Qt::NoFocus);
-        row.m_slider->setToolTip(tr(motionFieldDefs[f].m_tooltip));
-        row.m_value = new QLabel();
-        row.m_value->setMinimumWidth(80);
-        row.m_value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        grid->addWidget(row.m_label, gridRow, 0);
-        grid->addWidget(row.m_slider, gridRow, 1);
-        grid->addWidget(row.m_value, gridRow, 2);
-        gridRow++;
-        connect(row.m_slider, &QSlider::valueChanged, this, [this, f](int value) { onMotionSliderChanged(f, value); });
-    }
+    addSlider(tr("Reaction"), tr("How quickly the movement follows the ring: smooth on the left, snappy on the right"), m_reaction, m_reactionValue);
+    m_reaction->setRange(0, 100);
+
+    addTitle(tr("Jog wheel"));
+    addSlider(tr("Click"), tr("Size of one jog click: Hz in channel mode, kHz in device mode, zoom per click in spectrum mode"), m_jogStep, m_jogStepValue);
+    addSlider(tr("Acceleration"), tr("How much the jog accelerates when turned fast: off on the left, strong on the right"), m_jogAccel, m_jogAccelValue);
+    m_jogAccel->setRange(0, 100);
 
     layout->addLayout(grid);
 
@@ -363,6 +354,31 @@ void JogdialControllerGUI::buildMotionUI()
     m_motionSpeeds->setToolTip(tr("Resulting speed of ring positions 1 to 7"));
     layout->addWidget(m_motionSpeeds);
 
+    m_ringRange->onChanged = [this](int low, int high) {
+        JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
+
+        // Only the handle that moved changes its value: the other one keeps its exact setting
+        if (low != ringAxis(p.m_ringMin)) {
+            p.m_ringMin = ringValue(low);
+        }
+        if (high != ringAxis(p.m_ringMax)) {
+            p.m_ringMax = ringValue(high);
+        }
+
+        motionChanged();
+    };
+    connect(m_reaction, &QSlider::valueChanged, this, [this](int value) {
+        m_settings.m_motion[m_displayedMode].m_reaction = value;
+        motionChanged();
+    });
+    connect(m_jogStep, &QSlider::valueChanged, this, [this](int value) {
+        m_settings.m_motion[m_displayedMode].m_jogStep = jogStepValue(value);
+        motionChanged();
+    });
+    connect(m_jogAccel, &QSlider::valueChanged, this, [this](int value) {
+        m_settings.m_motion[m_displayedMode].m_jogAccel = value;
+        motionChanged();
+    });
     connect(m_motionMode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int index) {
         m_displayedMode = std::max(0, std::min(JogdialControllerSettings::m_modeCount - 1, index));
         displayMotion();
@@ -375,28 +391,27 @@ void JogdialControllerGUI::buildMotionUI()
     });
 }
 
-double JogdialControllerGUI::motionFieldValue(int field, int sliderValue) const
+//! Value (kHz/s, Hz/s or window widths per second) at a position of the speed axis (100 units per decade)
+double JogdialControllerGUI::ringValue(int axis) const
 {
-    switch (field)
-    {
-    case MfBase: return motionBaseMin[m_displayedMode] * std::pow(10.0, sliderValue / 100.0);
-    case MfRatio: return sliderValue / 100.0;
-    default: return sliderValue;
-    }
+    return ringAxisMin[m_displayedMode] * std::pow(10.0, axis / 100.0);
 }
 
-int JogdialControllerGUI::motionFieldSlider(int field, double value) const
+int JogdialControllerGUI::ringAxis(double value) const
 {
-    int v;
+    const int axis = (int) std::lround(100.0 * std::log10(std::max(value, 1e-9) / ringAxisMin[m_displayedMode]));
+    return std::max(0, std::min(100 * ringAxisDecades[m_displayedMode], axis));
+}
 
-    switch (field)
-    {
-    case MfBase: v = (int) std::lround(100.0 * std::log10(std::max(value, 1e-9) / motionBaseMin[m_displayedMode])); break;
-    case MfRatio: v = (int) std::lround(value * 100.0); break;
-    default: v = (int) std::lround(value); break;
-    }
+//! Click size: logarithmic 1 to 1000 in channel and device mode, 2 to 50 percent in spectrum mode
+double JogdialControllerGUI::jogStepValue(int slider) const
+{
+    return (m_displayedMode == 2) ? slider / 100.0 : std::pow(10.0, slider / 100.0);
+}
 
-    return std::max(motionFieldDefs[field].m_min, std::min(motionFieldDefs[field].m_max, v));
+int JogdialControllerGUI::jogStepSlider(double value) const
+{
+    return (m_displayedMode == 2) ? (int) std::lround(value * 100.0) : (int) std::lround(100.0 * std::log10(std::max(value, 1.0)));
 }
 
 //! value: kHz/s (device), Hz/s (channel), window widths per second (spectrum)
@@ -417,53 +432,57 @@ QString JogdialControllerGUI::formatSpeed(int mode, double value)
     }
 }
 
-QString JogdialControllerGUI::motionFieldText(int field, double value) const
-{
-    switch (field)
-    {
-    case MfBase: return formatSpeed(m_displayedMode, value);
-    case MfRatio: return QString("x%1").arg(value, 0, 'f', 2);
-    case MfJogRate: return QString("%1 /s").arg(value, 0, 'f', 0);
-    case MfJogMax: return QString("x%1").arg(value, 0, 'f', 0);
-    default: return QString("%1 ms").arg(value, 0, 'f', 0);
-    }
-}
-
-//! Show the parameters of the selected mode on the sliders
-void JogdialControllerGUI::displayMotion()
+//! Texts next to the controls and the speeds of the ring positions, from the parameters of the displayed mode
+void JogdialControllerGUI::displayMotionTexts()
 {
     const JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
-    const double values[MfCount] = {
-        p.m_shuttleBase, p.m_shuttleRatio, (double) p.m_accelMs, (double) p.m_decelMs,
-        p.m_jogGainMinRate, p.m_jogGainMax, (double) p.m_zoomMs, (double) p.m_retuneMs
-    };
 
-    for (int f = 0; f < MfCount; f++)
-    {
-        MotionRow& row = m_motionRows[f];
-        row.m_slider->blockSignals(true);
-        row.m_slider->setValue(motionFieldSlider(f, values[f]));
-        row.m_slider->blockSignals(false);
-        row.m_value->setText(motionFieldText(f, values[f]));
+    m_ringRatio->setText(QString("x%1 / step").arg(p.ringRatio(), 0, 'f', 1));
+    m_reactionValue->setText(QString("%1 ms").arg(p.reactionMs()));
+
+    if (m_displayedMode == 2) {
+        m_jogStepValue->setText(QString("%1 %").arg(p.m_jogStep * 100.0, 0, 'f', 0));
+    } else {
+        m_jogStepValue->setText(QString("%1 %2").arg(p.m_jogStep, 0, 'f', 0).arg(m_displayedMode == 0 ? "kHz" : "Hz"));
     }
 
-    // Only the zoom (spectrum) and the retuning (device) have a meaning in one mode
-    const bool enabled[MfCount] = {true, true, true, true, true, true, m_displayedMode == 2, m_displayedMode == 0};
-
-    for (int f = 0; f < MfCount; f++)
-    {
-        m_motionRows[f].m_label->setEnabled(enabled[f]);
-        m_motionRows[f].m_slider->setEnabled(enabled[f]);
-        m_motionRows[f].m_value->setEnabled(enabled[f]);
-    }
+    m_jogAccelValue->setText((p.m_jogAccel == 0) ? tr("off") : QString("%1 %").arg(p.m_jogAccel));
 
     QStringList speeds;
 
     for (int position = 1; position <= 7; position++) {
-        speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_shuttleBase * std::pow(p.m_shuttleRatio, position - 1))));
+        speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_ringMin * std::pow(p.ringRatio(), position - 1))));
     }
 
     m_motionSpeeds->setText(tr("Ring positions: ") + speeds.join(tr("  ")));
+}
+
+//! Show the parameters of the selected mode on the controls
+void JogdialControllerGUI::displayMotion()
+{
+    const JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
+
+    m_ringRange->setBounds(0, 100 * ringAxisDecades[m_displayedMode], 40);
+    m_ringRange->setValues(ringAxis(p.m_ringMin), ringAxis(p.m_ringMax));
+
+    m_reaction->blockSignals(true);
+    m_reaction->setValue(p.m_reaction);
+    m_reaction->blockSignals(false);
+
+    m_jogStep->blockSignals(true);
+
+    if (m_displayedMode == 2) {
+        m_jogStep->setRange(2, 50);
+    } else {
+        m_jogStep->setRange(0, 300);
+    }
+
+    m_jogStep->setValue(jogStepSlider(p.m_jogStep));
+    m_jogStep->blockSignals(false);
+
+    m_jogAccel->blockSignals(true);
+    m_jogAccel->setValue(p.m_jogAccel);
+    m_jogAccel->blockSignals(false);
 
     if (m_motionMode->currentIndex() != m_displayedMode)
     {
@@ -471,37 +490,14 @@ void JogdialControllerGUI::displayMotion()
         m_motionMode->setCurrentIndex(m_displayedMode);
         m_motionMode->blockSignals(false);
     }
+
+    displayMotionTexts();
 }
 
-void JogdialControllerGUI::onMotionSliderChanged(int field, int sliderValue)
+//! A control was moved: show the consequences and send the parameters to the controller
+void JogdialControllerGUI::motionChanged()
 {
-    JogdialControllerSettings::MotionParams& p = m_settings.m_motion[m_displayedMode];
-    const double value = motionFieldValue(field, sliderValue);
-
-    switch (field)
-    {
-    case MfBase: p.m_shuttleBase = value; break;
-    case MfRatio: p.m_shuttleRatio = value; break;
-    case MfAccel: p.m_accelMs = (int) value; break;
-    case MfDecel: p.m_decelMs = (int) value; break;
-    case MfJogRate: p.m_jogGainMinRate = value; break;
-    case MfJogMax: p.m_jogGainMax = value; break;
-    case MfZoom: p.m_zoomMs = (int) value; break;
-    case MfRetune: p.m_retuneMs = (int) value; break;
-    default: return;
-    }
-
-    m_motionRows[field].m_value->setText(motionFieldText(field, value));
-
-    // Refresh the speeds of the ring positions without touching the sliders being dragged
-    QStringList speeds;
-
-    for (int position = 1; position <= 7; position++) {
-        speeds.append(QString("%1: %2").arg(position).arg(formatSpeed(m_displayedMode, p.m_shuttleBase * std::pow(p.m_shuttleRatio, position - 1))));
-    }
-
-    m_motionSpeeds->setText(tr("Ring positions: ") + speeds.join(tr("  ")));
-
+    displayMotionTexts();
     m_settingsKeys.append("motion");
     applySettings();
 }

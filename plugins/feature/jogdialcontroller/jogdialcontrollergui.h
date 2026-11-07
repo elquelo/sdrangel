@@ -28,6 +28,7 @@
 #include "settings/rollupstate.h"
 
 #include "jogdialcontrollersettings.h"
+#include "jogdialrangeslider.h"
 
 class PluginAPI;
 class FeatureUISet;
@@ -78,16 +79,14 @@ private:
 	CommandKeyReceiver m_commandKeyReceiver;
 	QPointer<QShortcut> m_focusShortcut; //!< Takes the keyboard focus from any window of the application while the plugin is started
 
-	//! Sliders of the motion parameters of one control mode
-	struct MotionRow
-	{
-		QLabel *m_label{nullptr};
-		QSlider *m_slider{nullptr};
-		QLabel *m_value{nullptr};
-	};
-	enum MotionField { MfBase, MfRatio, MfAccel, MfDecel, MfJogRate, MfJogMax, MfZoom, MfRetune, MfCount };
-
-	MotionRow m_motionRows[MfCount];
+	JogdialRangeSlider *m_ringRange{nullptr};   //!< Speed of the first and last ring positions
+	QLabel *m_ringRatio{nullptr};
+	QSlider *m_reaction{nullptr};
+	QLabel *m_reactionValue{nullptr};
+	QSlider *m_jogStep{nullptr};
+	QLabel *m_jogStepValue{nullptr};
+	QSlider *m_jogAccel{nullptr};
+	QLabel *m_jogAccelValue{nullptr};
 	QComboBox *m_motionMode{nullptr};
 	QPushButton *m_motionDefaults{nullptr};
 	QLabel *m_motionSpeeds{nullptr};
@@ -105,10 +104,12 @@ private:
     void takeKeyboardFocus();
 	void buildMotionUI();
 	void displayMotion();
-	void onMotionSliderChanged(int field, int sliderValue);
-	double motionFieldValue(int field, int sliderValue) const;
-	int motionFieldSlider(int field, double value) const;
-	QString motionFieldText(int field, double value) const;
+	void displayMotionTexts();
+	void motionChanged();
+	double ringValue(int axis) const;
+	int ringAxis(double value) const;
+	double jogStepValue(int slider) const;
+	int jogStepSlider(double value) const;
 	static QString formatSpeed(int mode, double value);
 
 private slots:

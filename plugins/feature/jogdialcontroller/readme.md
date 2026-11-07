@@ -54,25 +54,24 @@ It displays "D" when in device control, "C" when in channel control or "S" when 
 
 <h3>6: Motion parameters</h3>
 
-The "Motion" section sets how the jog wheel and the shuttle ring behave, separately for each control type (device, channel, spectrum). The combo box selects the type edited; it follows the control type in use. Changes apply at once and are saved with the plugin settings. "Defaults" restores the values of the selected type. The sliders do not take the keyboard focus so using them does not interrupt the control.
+The "Motion" section sets how the shuttle ring and the jog wheel behave, separately for each control type (device, channel, spectrum). The combo box selects the type edited; it follows the control type in use. Changes apply at once and are saved with the plugin settings. "Defaults" restores the values of the selected type. The controls do not take the keyboard focus so using them does not interrupt the control.
 
-The sliders are grouped: "Ring (shuttle)" for the shuttle ring, "Jog wheel" for the jog wheel, and "Jog and ring" for what applies to both.
+Ring (shuttle):
 
-  - **Speed 1**: speed at ring position 1 (kHz/s for a device, Hz/s for a channel, percent of the displayed window per second for the spectrum)
-  - **Ratio**: speed factor between two successive ring positions. The line below the sliders shows the resulting speed of positions 1 to 7
-  - **Accel**: time in ms the speed takes to follow the ring when speeding up. Lower is quicker
-  - **Brake**: same when slowing down or stopping
-  - **Start at**: number of jog clicks per second above which the jog accelerates
-  - **Max gain**: maximum acceleration of the jog
-  - **Zoom smooth**: smoothing time of the zoom animation in ms (spectrum only)
-  - **Retune**: minimum delay in ms between two retunings of the device (device only)
+  - **Speed**: a slider with two handles. The left handle is the speed of ring position 1 (the slowest), the right handle the speed of position 7 (the fastest). The positions in between follow a regular progression, shown on the last line ("Ring positions") together with the factor between two successive positions. Units: kHz/s for a device, Hz/s for a channel, percent of the displayed window per second for the spectrum
+  - **Reaction**: how quickly the movement follows the ring, from smooth (left, about 250 ms) to snappy (right, about 20 ms). It applies when speeding up and slowing down, and to the animation of the zoom
+
+Jog wheel:
+
+  - **Click**: size of one jog click: 1 to 1000 Hz for a channel, 1 to 1000 kHz for a device, 2 to 50 percent zoom for the spectrum. The modifier keys still multiply it by 10, 100 and 1000 (frequency) or by about 2.3, 4.3 and 7.3 (zoom)
+  - **Acceleration**: how much each click counts more when the wheel is turned fast, above 6 clicks per second. Off on the left, strong on the right
 
 <h3>Spectrum control</h3>
 
 In spectrum control (S) the jog wheel and the shuttle wheel act on the frequency zoom of the spectrum and waterfall display instead of changing a frequency. The display controlled is the one of the device set the selected channel (4) belongs to. The frequency of the device or of the channel is not modified in this mode.
 
   - The **jog wheel** zooms in (right) or out (left) keeping the frequency of the selected channel in place on the display. If no channel is selected it zooms around the center of the displayed window. The Ctl and Shift keys select the zoom ratio of each click: no key: x1.1, Ctl key: x1.25, Shift key: x1.5, Ctl+Shift keys: x2. The jog acceleration applies to the zoom too and the zoom is animated: the display moves progressively towards the requested zoom. The zoom factor is limited between 1 (full span) and 50 as it is with the mouse wheel.
-  - The **shuttle wheel** moves the zoomed window towards lower frequencies (left positions) or higher frequencies (right positions) for as long as the position is maintained. The speed follows the position of the ring progressively: it takes a fraction of a second to reach the speed of a new position and to stop when the ring is released. The further you go from the center the faster it goes. The speed is multiplied by about 4.64 for channels and by about 3.16 (half a decade) for devices from one position to the next as you move away from the center. Thus to summarize with the default parameters (all of them can be changed in the Motion section):
+  - The **shuttle wheel** moves the zoomed window towards lower frequencies (left positions) or higher frequencies (right positions) for as long as the position is maintained. The speed follows the position of the ring progressively: it takes a fraction of a second to reach the speed of a new position and to stop when the ring is released. The further you go from the center the faster it goes. The speed is multiplied by about 4.64 for channels and by about 3.16 (half a decade) for devices from one position to the next as you move away from the center. Thus to summarize with the default parameters (the speeds of the ring can be changed in the Motion section):
 
   - Center: rest position stops moving
   - &plusmn; 1 step: &plusmn; 30 Hz/s for channels, &plusmn; 3 kHz/s for devices

@@ -21,6 +21,8 @@
 #ifndef INCLUDE_FEATURE_JOGDIALCONTROLLERSETTINGS_H_
 #define INCLUDE_FEATURE_JOGDIALCONTROLLERSETTINGS_H_
 
+#include <cmath>
+
 #include <QByteArray>
 #include <QString>
 
@@ -45,17 +47,25 @@ struct JogdialControllerSettings
         AvailableChannel& operator=(const AvailableChannel&) = default;
     };
 
-    //! Parameters of the jog wheel and the shuttle ring in one control mode
+    //! Parameters of the jog wheel and the shuttle ring in one control mode. Four user settings, the rest is derived
     struct MotionParams
     {
-        double m_shuttleBase;      //!< Speed at ring position 1: kHz/s (device), Hz/s (channel) or window widths/s (spectrum)
-        double m_shuttleRatio;     //!< Speed ratio between two successive ring positions
-        int m_accelMs;             //!< Time constant when the ring speeds up (ms)
-        int m_decelMs;             //!< Time constant when the ring slows down (ms)
-        double m_jogGainMinRate;   //!< Jog clicks per second above which the jog accelerates
-        double m_jogGainMax;       //!< Maximum jog acceleration
-        int m_zoomMs;              //!< Time constant of the animated zoom (spectrum only)
-        int m_retuneMs;            //!< Minimum delay between two retunings of the device (device only)
+        double m_ringMin;  //!< Speed at ring position 1: kHz/s (device), Hz/s (channel) or window widths/s (spectrum)
+        double m_ringMax;  //!< Speed at ring position 7, same unit. The positions in between follow a geometric progression
+        int m_reaction;    //!< 0 (smooth) to 100 (snappy): how quickly the movement follows the ring
+        double m_jogStep;  //!< Size of a jog click: Hz (channel), kHz (device) or fraction of zoom (spectrum)
+        int m_jogAccel;    //!< 0 (none) to 100: how much the jog accelerates when turned fast
+
+        //! Speed ratio between two successive ring positions (position 1 to 7: 6 steps)
+        double ringRatio() const { return std::pow(m_ringMax / m_ringMin, 1.0 / 6.0); }
+        //! Time constant of the movement in ms, from 250 (smooth) to 20 (snappy), geometric in between
+        int reactionMs() const { return (int) std::lround(250.0 * std::pow(20.0 / 250.0, m_reaction / 100.0)); }
+        //! Animated zoom is a bit slower than the movement
+        int zoomMs() const { return 2 * reactionMs(); }
+        //! Gain of the jog for a click rate above jogAccelStartRate(): 1 + slope * (rate / start rate - 1)
+        double jogAccelSlope() const { return m_jogAccel / 25.0; }
+        static double jogAccelStartRate() { return 6.0; }  //!< Jog clicks per second above which the jog accelerates
+        static double jogGainMax() { return 50.0; }
     };
 
     static const int m_modeCount = 3; //!< Device, channel, spectrum: same order as JogdialController::ControlMode
