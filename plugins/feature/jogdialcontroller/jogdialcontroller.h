@@ -267,6 +267,7 @@ private:
     int m_lastJogDirection;              //!< Sign of the last jog click
 
     static const int m_motionIntervalMs = 30;          //!< Period of the motion updates
+    static const int m_deviceRetuneMinMs = 100;        //!< Minimum delay between two retunings of the device
     static const int m_shuttleMaxPosition = 7;
     static constexpr double m_zoomPendingMax = 2.772588722239781; //!< Maximum pending zoom: ln(16)
 

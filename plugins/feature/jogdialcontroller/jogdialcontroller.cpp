@@ -758,7 +758,7 @@ void JogdialController::flushDeviceSteps(bool force)
         return;
     }
 
-    if (!force && m_deviceRetuneClock.isValid() && (m_deviceRetuneClock.elapsed() < motion().m_retuneMs))
+    if (!force && m_deviceRetuneClock.isValid() && (m_deviceRetuneClock.elapsed() < m_deviceRetuneMinMs))
     {
         startMotion(); // the retuning is for the next ticks
         return;
@@ -821,7 +821,7 @@ void JogdialController::jogStep(int step)
     if (m_controlMode == ControlMode::Spectrum) {
         zoomSpectrum(step, gain);
     } else {
-        const int scaled = qRound(step * gain);
+        const int scaled = qRound(step * gain * motion().m_jogStep);
         stepFrequency((scaled != 0) ? scaled : ((step > 0) ? 1 : -1));
     }
 }
@@ -840,8 +840,10 @@ double JogdialController::jogGain(int direction)
         {
             const double rate = 1000.0 / interval;
 
-            if (rate > motion().m_jogGainMinRate) {
-                gain = std::min(motion().m_jogGainMax, rate / motion().m_jogGainMinRate);
+            const double start = JogdialControllerSettings::MotionParams::jogAccelStartRate();
+
+            if (rate > start) {
+                gain = std::min(JogdialControllerSettings::MotionParams::jogGainMax(), 1.0 + motion().jogAccelSlope() * (rate / start - 1.0));
             }
         }
     }
@@ -855,20 +857,21 @@ double JogdialController::jogGain(int direction)
 //! The zoom is not applied at once: it is requested as a distance to cover that the motion timer animates
 void JogdialController::zoomSpectrum(int step, double gain)
 {
+    // A click zooms by m_jogStep (a fraction). The modifier keys multiply it: x1, x2.3, x4.3 and x7.3
     const int magnitude = qAbs(step);
-    double ratio;
+    double multiplier;
 
     if (magnitude >= 1000) {
-        ratio = 2.0;
+        multiplier = 7.273;
     } else if (magnitude >= 100) {
-        ratio = 1.5;
+        multiplier = 4.254;
     } else if (magnitude >= 10) {
-        ratio = 1.25;
+        multiplier = 2.341;
     } else {
-        ratio = 1.1;
+        multiplier = 1.0;
     }
 
-    const double logRatio = std::log(ratio) * gain * ((step > 0) ? 1.0 : -1.0);
+    const double logRatio = std::log(1.0 + motion().m_jogStep) * multiplier * gain * ((step > 0) ? 1.0 : -1.0);
     m_zoomPending = std::max(-m_zoomPendingMax, std::min(m_zoomPendingMax, m_zoomPending + logRatio));
     startMotion();
 }
@@ -954,7 +957,7 @@ void JogdialController::setShuttlePosition(int position)
 //! Speed of the first ring position: steps/s (Hz/s for a channel, kHz/s for a device) or window widths/s
 double JogdialController::shuttleBaseVelocity() const
 {
-    return motion().m_shuttleBase;
+    return motion().m_ringMin;
 }
 
 //! Speed the ring position asks for: it grows geometrically from a position to the next
@@ -964,7 +967,7 @@ double JogdialController::shuttleTargetVelocity() const
         return 0.0;
     }
 
-    const double velocity = shuttleBaseVelocity() * std::pow(motion().m_shuttleRatio, std::abs(m_shuttlePosition) - 1);
+    const double velocity = shuttleBaseVelocity() * std::pow(motion().ringRatio(), std::abs(m_shuttlePosition) - 1);
     return (m_shuttlePosition > 0) ? velocity : -velocity;
 }
 
@@ -996,7 +999,7 @@ void JogdialController::handleMotion()
     const double dt = std::min(0.1, m_motionClock.restart() / 1000.0);
     const double target = shuttleTargetVelocity();
 
-    const int timeConstantMs = (std::abs(target) < std::abs(m_velocity)) ? motion().m_decelMs : motion().m_accelMs;
+    const int timeConstantMs = motion().reactionMs();
     m_velocity += (target - m_velocity) * (1.0 - std::exp(-dt * 1000.0 / timeConstantMs));
 
     if ((target == 0.0) && (std::abs(m_velocity) < 0.5 * shuttleBaseVelocity())) {
@@ -1023,7 +1026,7 @@ void JogdialController::handleMotion()
 
     if (m_zoomPending != 0.0)
     {
-        double applied = m_zoomPending * (1.0 - std::exp(-dt * 1000.0 / motion().m_zoomMs));
+        double applied = m_zoomPending * (1.0 - std::exp(-dt * 1000.0 / motion().zoomMs()));
 
         if (std::abs(m_zoomPending - applied) < 0.002) { // close enough: finish
             applied = m_zoomPending;
