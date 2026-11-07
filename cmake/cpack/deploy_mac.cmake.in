@@ -56,3 +56,25 @@ execute_process ( COMMAND macdeployqt ${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRan
 # macdeployqt corrupts libusb signature, so resign it. See: https://github.com/f4exb/sdrangel/issues/2524
 execute_process ( COMMAND echo "resigning" )
 execute_process ( COMMAND codesign --force --sign - ${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app/Contents/Frameworks/libusb-1.0.0.dylib )
+
+# The SDRplay API is not redistributable and it talks to the service installed with it, so it is not copied in to the bundle.
+# The SDRplayV3 plugin links to @rpath/libsdrplay_api.so.3 which is then looked up in the RPATHs of the plugin and of the executable only,
+# none of which is the folder where the SDRplay API installer puts it: add it to the plugin so that the device is found with the
+# API installed on the system. This is done after macdeployqt so that macdeployqt does not copy the library.
+# Changing the load commands invalidates the signature that is mandatory on Apple silicon, so the plugin is signed again.
+file(GLOB_RECURSE SDRPLAYV3_PLUGINS "${CPACK_TEMPORARY_INSTALL_DIRECTORY}/SDRangel.app/*libinputsdrplayv3.dylib")
+foreach(SDRPLAYV3_PLUGIN ${SDRPLAYV3_PLUGINS})
+  execute_process ( COMMAND /usr/bin/otool -l ${SDRPLAYV3_PLUGIN} OUTPUT_VARIABLE SDRPLAYV3_LOAD_COMMANDS )
+  string (FIND "${SDRPLAYV3_LOAD_COMMANDS}" "path /usr/local/lib " SDRPLAYV3_RPATH_POSITION)
+  if(SDRPLAYV3_RPATH_POSITION EQUAL -1)
+    message ("Adding RPATH /usr/local/lib to ${SDRPLAYV3_PLUGIN}")
+    execute_process ( COMMAND /usr/bin/install_name_tool -add_rpath /usr/local/lib ${SDRPLAYV3_PLUGIN} RESULT_VARIABLE SDRPLAYV3_RPATH_RESULT )
+    if(NOT SDRPLAYV3_RPATH_RESULT EQUAL 0)
+      message (FATAL_ERROR "Could not add RPATH to ${SDRPLAYV3_PLUGIN}")
+    endif()
+  endif()
+  execute_process ( COMMAND codesign --force --sign - ${SDRPLAYV3_PLUGIN} RESULT_VARIABLE SDRPLAYV3_SIGN_RESULT )
+  if(NOT SDRPLAYV3_SIGN_RESULT EQUAL 0)
+    message (FATAL_ERROR "Could not sign ${SDRPLAYV3_PLUGIN}")
+  endif()
+endforeach()

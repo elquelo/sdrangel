@@ -142,6 +142,13 @@ jobs:
           ditto "$SOURCE_APP" "$INSTALLED_APP"
           hdiutil detach "$MOUNT"
 
+          # The SDRplayV3 plugin must find the SDRplay API installed on the system and its signature must be valid
+          SDRPLAY_PLUGIN="$(find "$INSTALLED_APP" -type f -name 'libinputsdrplayv3.dylib' -print -quit)"
+          test -n "$SDRPLAY_PLUGIN"
+          LOAD_COMMANDS="$(otool -l "$SDRPLAY_PLUGIN")"
+          grep -Fq 'path /usr/local/lib ' <<<"$LOAD_COMMANDS"
+          codesign --verify --verbose=2 "$SDRPLAY_PLUGIN"
+
           PLIST="$INSTALLED_APP/Contents/Info.plist"
           plutil -lint "$PLIST"
 
