@@ -969,7 +969,15 @@ double JogdialController::shuttleTargetVelocity() const
         return 0.0;
     }
 
-    const double ratio = (m_controlMode == ControlMode::Spectrum) ? m_spectrumShuttleRatio : m_frequencyShuttleRatio;
+    double ratio;
+
+    switch (m_controlMode)
+    {
+    case ControlMode::Device: ratio = m_deviceShuttleRatio; break;
+    case ControlMode::Channel: ratio = m_channelShuttleRatio; break;
+    default: ratio = m_spectrumShuttleRatio; break;
+    }
+
     const double velocity = shuttleBaseVelocity() * std::pow(ratio, std::abs(m_shuttlePosition) - 1);
     return (m_shuttlePosition > 0) ? velocity : -velocity;
 }
