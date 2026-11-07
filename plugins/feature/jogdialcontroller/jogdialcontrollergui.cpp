@@ -20,6 +20,7 @@
 #include <algorithm>
 
 #include <QComboBox>
+#include <QFontMetrics>
 #include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -283,25 +284,35 @@ void JogdialControllerGUI::buildMotionUI()
 {
     QVBoxLayout *layout = ui->motionLayout;
 
-    QHBoxLayout *top = new QHBoxLayout();
+    // The columns are sized from the text they hold so that nothing is cut whatever the font
+    const QFontMetrics metrics(font());
+    const int nameWidth = std::max({metrics.horizontalAdvance("Acceleration"), metrics.horizontalAdvance("Reaction"), metrics.horizontalAdvance("Mode")}) + 12;
+    const int valueWidth = std::max({metrics.horizontalAdvance("300 kHz/s"), metrics.horizontalAdvance("100 kHz"), metrics.horizontalAdvance("1000 Hz"), metrics.horizontalAdvance("Defaults") + 30}) + 12;
+
+    QFont bold = font();
+    bold.setBold(true);
+    QGridLayout *grid = new QGridLayout();
+    grid->setColumnMinimumWidth(0, nameWidth);
+    grid->setColumnMinimumWidth(2, valueWidth);
+    grid->setColumnStretch(1, 1);
+    grid->setHorizontalSpacing(8);
+    grid->setVerticalSpacing(3);
+    int row = 0;
+
     QLabel *modeLabel = new QLabel(tr("Mode"));
     m_motionMode = new QComboBox();
     m_motionMode->addItems({tr("D device"), tr("C channel"), tr("S spectrum")});
+    m_motionMode->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_motionMode->setMinimumContentsLength(12);
     m_motionMode->setFocusPolicy(Qt::NoFocus); // the keys must stay with the controller
     m_motionMode->setToolTip(tr("Control mode whose parameters are edited (follows the mode in use)"));
     m_motionDefaults = new QPushButton(tr("Defaults"));
     m_motionDefaults->setFocusPolicy(Qt::NoFocus);
     m_motionDefaults->setToolTip(tr("Restore the default parameters of this mode"));
-    top->addWidget(modeLabel);
-    top->addWidget(m_motionMode, 1);
-    top->addWidget(m_motionDefaults);
-    layout->addLayout(top);
-
-    QFont bold = font();
-    bold.setBold(true);
-    QGridLayout *grid = new QGridLayout();
-    grid->setColumnStretch(1, 1);
-    int row = 0;
+    grid->addWidget(modeLabel, row, 0);
+    grid->addWidget(m_motionMode, row, 1);
+    grid->addWidget(m_motionDefaults, row, 2);
+    row++;
 
     auto addTitle = [&](const QString& text) {
         QLabel *title = new QLabel(text);
@@ -316,7 +327,7 @@ void JogdialControllerGUI::buildMotionUI()
         slider->setFocusPolicy(Qt::NoFocus);
         slider->setToolTip(tip);
         value = new QLabel();
-        value->setMinimumWidth(70);
+        value->setMinimumWidth(valueWidth);
         value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         grid->addWidget(label, row, 0);
         grid->addWidget(slider, row, 1);
@@ -332,7 +343,7 @@ void JogdialControllerGUI::buildMotionUI()
     m_ringRange = new JogdialRangeSlider();
     m_ringRange->setToolTip(rangeTip);
     m_ringRangeValue = new QLabel();
-    m_ringRangeValue->setMinimumWidth(70);
+    m_ringRangeValue->setMinimumWidth(valueWidth);
     m_ringRangeValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     grid->addWidget(rangeLabel, row, 0);
     grid->addWidget(m_ringRange, row, 1);
