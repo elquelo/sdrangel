@@ -267,19 +267,7 @@ private:
     int m_lastJogDirection;              //!< Sign of the last jog click
 
     static const int m_motionIntervalMs = 30;          //!< Period of the motion updates
-    static const int m_velocityTimeConstantMs = 60;    //!< The shuttle speed follows the ring position with this time constant when accelerating
-    static const int m_velocityDecelTimeConstantMs = 60; //!< Same when slowing down: shorter so that stopping does not overshoot much
-    static const int m_zoomTimeConstantMs = 120;       //!< The animated zoom covers its remaining distance with this time constant
-    static const int m_deviceRetuneMinMs = 100;        //!< Minimum delay between two retunings of the device
     static const int m_shuttleMaxPosition = 7;
-    static constexpr double m_deviceShuttleRatio = 3.1622776601683795;  //!< Speed ratio between two ring positions when controlling a device (half a decade)
-    static constexpr double m_channelShuttleRatio = 4.641588833612778;  //!< Same for a channel (two thirds of a decade): ring position 7 is 10^4 times faster than position 1
-    static constexpr double m_channelShuttleBase = 30.0;   //!< Hz/s at ring position 1 when controlling a channel (300 kHz/s at position 7)
-    static constexpr double m_deviceShuttleBase = 3.0;     //!< kHz/s at ring position 1 when controlling a device
-    static constexpr double m_spectrumShuttleRatio = 2.0;  //!< Speed ratio between two ring positions in spectrum control
-    static constexpr double m_spectrumShuttleBase = 0.02;  //!< Window widths per second at ring position 1
-    static constexpr double m_jogGainMinRate = 6.0;        //!< Jog clicks per second above which the jog accelerates
-    static constexpr double m_jogGainMax = 25.0;           //!< Maximum jog acceleration
     static constexpr double m_zoomPendingMax = 2.772588722239781; //!< Maximum pending zoom: ln(16)
 
     QNetworkAccessManager *m_networkManager;
@@ -304,6 +292,7 @@ private:
     static bool shuttlePositionFromKey(Qt::Key key, int& position);
     double shuttleTargetVelocity() const;
     double shuttleBaseVelocity() const;
+    const JogdialControllerSettings::MotionParams& motion() const { return m_settings.m_motion[static_cast<int>(m_controlMode)]; } //!< Parameters of the current control mode
     void startMotion();
     void stopMotion();
     void applyDeviceStep(qint64 step);

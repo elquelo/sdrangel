@@ -744,7 +744,7 @@ void JogdialController::stepFrequency(int step)
 }
 
 //! Retune the device with the steps added up since the last retuning, unless this was done less than
-//! m_deviceRetuneMinMs ago and force is not set: the motion timer will do it then
+//! the retune delay of the device parameters ago and force is not set: the motion timer will do it then
 void JogdialController::flushDeviceSteps(bool force)
 {
     if (m_pendingDeviceStep == 0) {
@@ -758,7 +758,7 @@ void JogdialController::flushDeviceSteps(bool force)
         return;
     }
 
-    if (!force && m_deviceRetuneClock.isValid() && (m_deviceRetuneClock.elapsed() < m_deviceRetuneMinMs))
+    if (!force && m_deviceRetuneClock.isValid() && (m_deviceRetuneClock.elapsed() < motion().m_retuneMs))
     {
         startMotion(); // the retuning is for the next ticks
         return;
@@ -826,8 +826,8 @@ void JogdialController::jogStep(int step)
     }
 }
 
-//! Acceleration of the jog wheel: 1 up to m_jogGainMinRate clicks per second then proportional to the click rate
-//! up to m_jogGainMax. A change of direction starts again from 1
+//! Acceleration of the jog wheel: 1 up to a number of clicks per second then proportional to the click rate
+//! up to a maximum (both set per control mode). A change of direction starts again from 1
 double JogdialController::jogGain(int direction)
 {
     double gain = 1.0;
@@ -840,8 +840,8 @@ double JogdialController::jogGain(int direction)
         {
             const double rate = 1000.0 / interval;
 
-            if (rate > m_jogGainMinRate) {
-                gain = std::min(m_jogGainMax, rate / m_jogGainMinRate);
+            if (rate > motion().m_jogGainMinRate) {
+                gain = std::min(motion().m_jogGainMax, rate / motion().m_jogGainMinRate);
             }
         }
     }
@@ -954,12 +954,7 @@ void JogdialController::setShuttlePosition(int position)
 //! Speed of the first ring position: steps/s (Hz/s for a channel, kHz/s for a device) or window widths/s
 double JogdialController::shuttleBaseVelocity() const
 {
-    switch (m_controlMode)
-    {
-    case ControlMode::Device: return m_deviceShuttleBase;
-    case ControlMode::Channel: return m_channelShuttleBase;
-    default: return m_spectrumShuttleBase;
-    }
+    return motion().m_shuttleBase;
 }
 
 //! Speed the ring position asks for: it grows geometrically from a position to the next
@@ -969,16 +964,7 @@ double JogdialController::shuttleTargetVelocity() const
         return 0.0;
     }
 
-    double ratio;
-
-    switch (m_controlMode)
-    {
-    case ControlMode::Device: ratio = m_deviceShuttleRatio; break;
-    case ControlMode::Channel: ratio = m_channelShuttleRatio; break;
-    default: ratio = m_spectrumShuttleRatio; break;
-    }
-
-    const double velocity = shuttleBaseVelocity() * std::pow(ratio, std::abs(m_shuttlePosition) - 1);
+    const double velocity = shuttleBaseVelocity() * std::pow(motion().m_shuttleRatio, std::abs(m_shuttlePosition) - 1);
     return (m_shuttlePosition > 0) ? velocity : -velocity;
 }
 
@@ -1010,7 +996,7 @@ void JogdialController::handleMotion()
     const double dt = std::min(0.1, m_motionClock.restart() / 1000.0);
     const double target = shuttleTargetVelocity();
 
-    const int timeConstantMs = (std::abs(target) < std::abs(m_velocity)) ? m_velocityDecelTimeConstantMs : m_velocityTimeConstantMs;
+    const int timeConstantMs = (std::abs(target) < std::abs(m_velocity)) ? motion().m_decelMs : motion().m_accelMs;
     m_velocity += (target - m_velocity) * (1.0 - std::exp(-dt * 1000.0 / timeConstantMs));
 
     if ((target == 0.0) && (std::abs(m_velocity) < 0.5 * shuttleBaseVelocity())) {
@@ -1037,7 +1023,7 @@ void JogdialController::handleMotion()
 
     if (m_zoomPending != 0.0)
     {
-        double applied = m_zoomPending * (1.0 - std::exp(-dt * 1000.0 / m_zoomTimeConstantMs));
+        double applied = m_zoomPending * (1.0 - std::exp(-dt * 1000.0 / motion().m_zoomMs));
 
         if (std::abs(m_zoomPending - applied) < 0.002) { // close enough: finish
             applied = m_zoomPending;
