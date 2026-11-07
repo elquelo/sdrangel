@@ -56,13 +56,15 @@ It displays "D" when in device control, "C" when in channel control or "S" when 
 
 The "Motion" section sets how the jog wheel and the shuttle ring behave, separately for each control type (device, channel, spectrum). The combo box selects the type edited; it follows the control type in use. Changes apply at once and are saved with the plugin settings. "Defaults" restores the values of the selected type. The sliders do not take the keyboard focus so using them does not interrupt the control.
 
+The sliders are grouped: "Ring (shuttle)" for the shuttle ring, "Jog wheel" for the jog wheel, and "Jog and ring" for what applies to both.
+
   - **Speed 1**: speed at ring position 1 (kHz/s for a device, Hz/s for a channel, percent of the displayed window per second for the spectrum)
   - **Ratio**: speed factor between two successive ring positions. The line below the sliders shows the resulting speed of positions 1 to 7
   - **Accel**: time in ms the speed takes to follow the ring when speeding up. Lower is quicker
   - **Brake**: same when slowing down or stopping
-  - **Jog from**: number of jog clicks per second above which the jog accelerates
-  - **Jog max**: maximum acceleration of the jog
-  - **Zoom**: smoothing time of the zoom animation in ms (spectrum only)
+  - **Start at**: number of jog clicks per second above which the jog accelerates
+  - **Max gain**: maximum acceleration of the jog
+  - **Zoom smooth**: smoothing time of the zoom animation in ms (spectrum only)
   - **Retune**: minimum delay in ms between two retunings of the device (device only)
 
 <h3>Spectrum control</h3>
