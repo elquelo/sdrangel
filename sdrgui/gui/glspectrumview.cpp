@@ -47,6 +47,16 @@
 
 #include <QDebug>
 
+namespace
+{
+    // Size of a pixmap in device independent (logical) pixels.
+    // QPixmap::deviceIndependentSize() is only available from Qt 6.2.
+    QSize getLogicalSize(const QPixmap& pixmap)
+    {
+        return (QSizeF(pixmap.size()) / pixmap.devicePixelRatioF()).toSize();
+    }
+}
+
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportSampleRate, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportWaterfallShare, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportFFTOverlap, Message)
@@ -1918,9 +1928,9 @@ void GLSpectrumView::paintGL()
     {
         glFunctions->glViewport(0, m_3DSpectrogramBottom*devicePixelRatio, width()*devicePixelRatio, m_waterfallHeight*devicePixelRatio);
         {
-            GLfloat l = m_spectrogramTimePixmap.deviceIndependentSize().width() / (GLfloat) width();
+            GLfloat l = getLogicalSize(m_spectrogramTimePixmap).width() / (GLfloat) width();
             GLfloat r = m_rightMargin / (GLfloat) width();
-            GLfloat h = m_frequencyPixmap.deviceIndependentSize().height() / (GLfloat) m_waterfallHeight;
+            GLfloat h = getLogicalSize(m_frequencyPixmap).height() / (GLfloat) m_waterfallHeight;
 
             GLfloat vtx1[] = {
                 -l, -    h,
@@ -1939,7 +1949,7 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramTimePixmap.deviceIndependentSize().width() / (GLfloat) width();
+            GLfloat w = getLogicalSize(m_spectrogramTimePixmap).width() / (GLfloat) width();
             GLfloat h = (m_bottomMargin/2) / (GLfloat) m_waterfallHeight;      // m_bottomMargin is fm.ascent
 
             GLfloat vtx1[] = {
@@ -1959,8 +1969,8 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramPowerPixmap.deviceIndependentSize().width() / (GLfloat) width();
-            GLfloat h = m_topMargin / (GLfloat) m_spectrogramPowerPixmap.deviceIndependentSize().height();
+            GLfloat w = getLogicalSize(m_spectrogramPowerPixmap).width() / (GLfloat) width();
+            GLfloat h = m_topMargin / (GLfloat) getLogicalSize(m_spectrogramPowerPixmap).height();
 
             GLfloat vtx1[] = {
                 -w,   1.0f, 0.0f,
@@ -4745,7 +4755,7 @@ void GLSpectrumView::mouseMoveEvent(QMouseEvent* event)
         // Determine if user is trying to move the channel outside of the current frequency range
         // and if so, request an adjustment to the center frequency
         // FIXME: This doesn't take zoom into account, so only works when zoomed out
-        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.deviceIndependentSize().width() - 1);
+        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - getLogicalSize(m_leftMarginPixmap).width() - 1);
         Real freqMin = getDisplayedCenterFrequency() - getDisplayedSampleRate() / 2.0f;
         Real freqMax = getDisplayedCenterFrequency() + getDisplayedSampleRate() / 2.0f;
         if (freqAbs < freqMin) {
@@ -5097,7 +5107,7 @@ void GLSpectrumView::mousePressEvent(QMouseEvent* event)
             setCursor(Qt::SizeHorCursor);
             m_cursorState = CSChannelMoving;
             m_cursorChannel = 0;
-            Real freq = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.deviceIndependentSize().width() - 1) - getDisplayedCenterFrequency();
+            Real freq = m_frequencyScale.getValueFromPos(event->x() - getLogicalSize(m_leftMarginPixmap).width() - 1) - getDisplayedCenterFrequency();
 
             if (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getMovable()
                 && (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getSourceOrSinkStream() == m_displaySourceOrSink)
