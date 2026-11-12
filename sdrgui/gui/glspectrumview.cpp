@@ -1838,9 +1838,9 @@ void GLSpectrumView::paintGL()
     {
         glFunctions->glViewport(0, m_3DSpectrogramBottom*devicePixelRatio, width()*devicePixelRatio, m_waterfallHeight*devicePixelRatio);
         {
-            GLfloat l = m_spectrogramTimePixmap.width() / (GLfloat) width();
+            GLfloat l = m_spectrogramTimePixmap.deviceIndependentSize().width() / (GLfloat) width();
             GLfloat r = m_rightMargin / (GLfloat) width();
-            GLfloat h = m_frequencyPixmap.height() / (GLfloat) m_waterfallHeight;
+            GLfloat h = m_frequencyPixmap.deviceIndependentSize().height() / (GLfloat) m_waterfallHeight;
 
             GLfloat vtx1[] = {
                 -l, -    h,
@@ -1859,7 +1859,7 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramTimePixmap.width() / (GLfloat) width();
+            GLfloat w = m_spectrogramTimePixmap.deviceIndependentSize().width() / (GLfloat) width();
             GLfloat h = (m_bottomMargin/2) / (GLfloat) m_waterfallHeight;      // m_bottomMargin is fm.ascent
 
             GLfloat vtx1[] = {
@@ -1879,8 +1879,8 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramPowerPixmap.width() / (GLfloat) width();
-            GLfloat h = m_topMargin / (GLfloat) m_spectrogramPowerPixmap.height();
+            GLfloat w = m_spectrogramPowerPixmap.deviceIndependentSize().width() / (GLfloat) width();
+            GLfloat h = m_topMargin / (GLfloat) m_spectrogramPowerPixmap.deviceIndependentSize().height();
 
             GLfloat vtx1[] = {
                 -w,   1.0f, 0.0f,
@@ -3406,6 +3406,17 @@ void GLSpectrumView::setTimeScaleRange()
     }
 }
 
+// Create a transparent pixmap at device resolution to draw scales and text that will be uploaded as textures.
+// Drawing coordinates and geometry stay in logical pixels, so the text is sharp on HiDPI displays.
+QPixmap GLSpectrumView::createTexturePixmap(int pixmapWidth, int pixmapHeight) const
+{
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmap(QSize(pixmapWidth, pixmapHeight) * dpr);
+    pixmap.setDevicePixelRatio(dpr);
+    pixmap.fill(Qt::transparent);
+    return pixmap;
+}
+
 void GLSpectrumView::paintLeftScales()
 {
     QFontMetrics fm(font());
@@ -3413,8 +3424,7 @@ void GLSpectrumView::paintLeftScales()
 
     float maxSize = 0.0f;
 
-    m_leftMarginPixmap = QPixmap(m_leftMargin - 1, height());
-    m_leftMarginPixmap.fill(Qt::transparent);
+    m_leftMarginPixmap = createTexturePixmap(m_leftMargin - 1, height());
     {
         QPainter painter(&m_leftMarginPixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -3900,8 +3910,7 @@ void GLSpectrumView::applyChanges()
 
     // prepare frequency scale
     if (m_displayWaterfall || m_display3DSpectrogram || m_displayHistogram || m_displayMaxHold || m_displayCurrent) {
-        m_frequencyPixmap = QPixmap(width(), m_frequencyScaleHeight);
-        m_frequencyPixmap.fill(Qt::transparent);
+        m_frequencyPixmap = createTexturePixmap(width(), m_frequencyScaleHeight);
         {
             QPainter painter(&m_frequencyPixmap);
             painter.setPen(Qt::NoPen);
@@ -3970,8 +3979,7 @@ void GLSpectrumView::applyChanges()
     }
     // prepare left scale for spectrogram (time)
     {
-        m_spectrogramTimePixmap = QPixmap(m_leftMargin - 1, fm.ascent() + m_waterfallHeight);
-        m_spectrogramTimePixmap.fill(Qt::transparent);
+        m_spectrogramTimePixmap = createTexturePixmap(m_leftMargin - 1, fm.ascent() + m_waterfallHeight);
         {
             QPainter painter(&m_spectrogramTimePixmap);
             painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -3995,8 +4003,7 @@ void GLSpectrumView::applyChanges()
     // prepare vertical scale for spectrogram (power)
     {
         int h = m_histogramHeight != 0 ? m_histogramHeight : m_waterfallHeight / 4;
-        m_spectrogramPowerPixmap = QPixmap(m_leftMargin - 1, m_topMargin + h);
-        m_spectrogramPowerPixmap.fill(Qt::transparent);
+        m_spectrogramPowerPixmap = createTexturePixmap(m_leftMargin - 1, m_topMargin + h);
         {
             QPainter painter(&m_spectrogramPowerPixmap);
             painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -4036,8 +4043,7 @@ void GLSpectrumView::applyChanges()
     );
     QString infoText;
     formatTextInfo(infoText);
-    m_infoPixmap = QPixmap(width(), m_infoHeight);
-    m_infoPixmap.fill(Qt::transparent);
+    m_infoPixmap = createTexturePixmap(width(), m_infoHeight);
     {
         QPainter painter(&m_infoPixmap);
         painter.setPen(Qt::NoPen);
@@ -4650,7 +4656,7 @@ void GLSpectrumView::mouseMoveEvent(QMouseEvent* event)
         // Determine if user is trying to move the channel outside of the current frequency range
         // and if so, request an adjustment to the center frequency
         // FIXME: This doesn't take zoom into account, so only works when zoomed out
-        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.width() - 1);
+        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.deviceIndependentSize().width() - 1);
         Real freqMin = getDisplayedCenterFrequency() - getDisplayedSampleRate() / 2.0f;
         Real freqMax = getDisplayedCenterFrequency() + getDisplayedSampleRate() / 2.0f;
         if (freqAbs < freqMin) {
@@ -5002,7 +5008,7 @@ void GLSpectrumView::mousePressEvent(QMouseEvent* event)
             setCursor(Qt::SizeHorCursor);
             m_cursorState = CSChannelMoving;
             m_cursorChannel = 0;
-            Real freq = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.width() - 1) - getDisplayedCenterFrequency();
+            Real freq = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.deviceIndependentSize().width() - 1) - getDisplayedCenterFrequency();
 
             if (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getMovable()
                 && (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getSourceOrSinkStream() == m_displaySourceOrSink)
@@ -5686,8 +5692,7 @@ void GLSpectrumView::drawTextOverlayCentered (
     QFontMetricsF metrics(font);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    QPixmap channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    QPixmap channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));
@@ -5742,8 +5747,7 @@ void GLSpectrumView::drawTextOverlay(
     QFontMetricsF metrics(font);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    QPixmap channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    QPixmap channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));

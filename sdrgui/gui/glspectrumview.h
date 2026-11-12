@@ -615,6 +615,7 @@ private:
     void redrawSpectrum();
     void redrawWaterfallAnd3DSpectrogram();
     void paintLeftScales();
+    QPixmap createTexturePixmap(int pixmapWidth, int pixmapHeight) const;
     void paintStatusLineRight();
     void updateScrollBar();
     int scrollBarValue() const;
