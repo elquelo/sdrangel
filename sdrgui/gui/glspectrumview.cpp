@@ -111,6 +111,12 @@ GLSpectrumView::GLSpectrumView(QWidget* parent) :
     m_3DSpectrogramBufferPos(0),
     m_3DSpectrogramTextureHeight(-1),
     m_3DSpectrogramTexturePos(0),
+    m_3DSpectrogramDepth(SpectrumSettings::m_3DSpectrogramDefaultDepth),
+    m_3DSpectrogramLag(1.0f),
+    m_3DSpectrogramRowPeriodMs(100.0),
+    m_3DSpectrogramGlideLastMs(0.0),
+    m_3DSpectrogramGlideLastRowsMs(0.0),
+    m_3DSpectrogramRefilled(true),
     m_display3DSpectrogram(false),
     m_rotate3DSpectrogram(false),
     m_pan3DSpectrogram(false),
@@ -436,6 +442,7 @@ void GLSpectrumView::setDisplay3DSpectrogram(bool display)
 {
     m_mutex.lock();
     m_display3DSpectrogram = display;
+    m_3DSpectrogramRefilled = true; // Timing of the new rows is not known after the display was off
     m_changesPending = true;
     stopDrag();
     m_mutex.unlock();
@@ -451,6 +458,20 @@ void GLSpectrumView::setSpectrumStyle(SpectrumSettings::SpectrumStyle style)
 void GLSpectrumView::set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style)
 {
     m_3DSpectrogramStyle = style;
+    update();
+}
+
+void GLSpectrumView::set3DSpectrogramDepth(int depth)
+{
+    QMutexLocker mutexLocker(&m_mutex);
+    depth = SpectrumSettings::clamp3DSpectrogramDepth(depth);
+
+    if (depth != m_3DSpectrogramDepth)
+    {
+        m_3DSpectrogramDepth = depth;
+        m_changesPending = true;
+        m_redrawAll = true;
+    }
     update();
 }
 
@@ -1017,22 +1038,35 @@ void GLSpectrumView::redrawWaterfallAnd3DSpectrogram()
 
         m_waterfallBufferPos = 0;
         m_waterfallTexturePos = 0;
-        m_3DSpectrogramBufferPos = 0;
-        m_3DSpectrogramTexturePos = 0;
 
         for (int i = 0; i < m_waterfallBuffer->height(); i++)
         {
-            if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size()))
-            {
+            if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size())) {
                 updateWaterfall(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
-                update3DSpectrogram(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
-            }
-            else
-            {
+            } else {
                 clearWaterfallRow(m_nbBins);
-                clear3DSpectrogramRow(m_nbBins);
             }
             idx++;
+        }
+
+        if (m_3DSpectrogramBuffer)
+        {
+            // The 3D spectrogram has its own number of rows
+            idx = m_spectrumBuffer.size() - 1 - m_3DSpectrogramBuffer->height() - scrollBarValue();
+
+            m_3DSpectrogramBufferPos = 0;
+            m_3DSpectrogramTexturePos = 0;
+            m_3DSpectrogramRefilled = true;
+
+            for (int i = 0; i < m_3DSpectrogramBuffer->height(); i++)
+            {
+                if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size())) {
+                    update3DSpectrogram(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
+                } else {
+                    clear3DSpectrogramRow(m_nbBins);
+                }
+                idx++;
+            }
         }
     }
 }
@@ -1313,6 +1347,49 @@ void GLSpectrumView::update3DSpectrogram(const Real *spectrum, int fftSize, int 
     }
 }
 
+// Make the 3D spectrogram scroll continuously rather than by a whole row each time a new spectrum arrives.
+// The displayed front edge trails the newest row by m_3DSpectrogramLag rows (kept between 0 and 2)
+// and advances with time at the rate at which rows arrive. The texture filter then interpolates the
+// heights between the two rows around the front edge. A new row adds one row of lag.
+// A gentle correction brings the lag back to about one row, so that it does not drift
+// to a point where the surface has to stop (no newer row available) or to jump forward.
+// newRows is the number of rows that were added since the last call.
+void GLSpectrumView::update3DSpectrogramGlide(int newRows)
+{
+    if (!m_3DSpectrogramGlideTimer.isValid())
+    {
+        m_3DSpectrogramGlideTimer.start();
+        m_3DSpectrogramGlideLastMs = 0.0;
+        m_3DSpectrogramGlideLastRowsMs = 0.0;
+        m_3DSpectrogramLag = 1.0f;
+        return;
+    }
+
+    const double nowMs = m_3DSpectrogramGlideTimer.nsecsElapsed() / 1e6;
+    const double elapsedMs = nowMs - m_3DSpectrogramGlideLastMs;
+    m_3DSpectrogramGlideLastMs = nowMs;
+
+    if (m_3DSpectrogramRefilled)
+    {
+        // All rows were rewritten from the history: no information on timing
+        m_3DSpectrogramRefilled = false;
+        m_3DSpectrogramGlideLastRowsMs = nowMs;
+        m_3DSpectrogramLag = 1.0f;
+        return;
+    }
+
+    if (newRows > 0)
+    {
+        const double periodMs = (nowMs - m_3DSpectrogramGlideLastRowsMs) / newRows;
+        m_3DSpectrogramGlideLastRowsMs = nowMs;
+        m_3DSpectrogramRowPeriodMs = 0.9 * m_3DSpectrogramRowPeriodMs + 0.1 * std::max(1.0, std::min(periodMs, 5000.0));
+    }
+
+    const float speed = 1.0f + 0.25f * (m_3DSpectrogramLag - 1.0f);
+    m_3DSpectrogramLag += newRows - (float) (elapsedMs / m_3DSpectrogramRowPeriodMs) * speed;
+    m_3DSpectrogramLag = std::max(0.0f, std::min(m_3DSpectrogramLag, 2.0f));
+}
+
 void GLSpectrumView::updateHistogram(const Real *spectrum, int fftMin, int nbBins)
 {
     quint8* b = m_histogram;
@@ -1556,6 +1633,8 @@ void GLSpectrumView::paintGL()
     {
         m_glShaderSpectrogram.applyTransform(spectrogramGridMatrix);
         // paint 3D spectrogram
+        const int newRows = m_3DSpectrogramBufferPos;
+
         if (m_3DSpectrogramTexturePos + m_3DSpectrogramBufferPos < m_3DSpectrogramTextureHeight)
         {
             m_glShaderSpectrogram.subTexture(0, m_3DSpectrogramTexturePos, m_nbBins + 1, m_3DSpectrogramBufferPos,  m_3DSpectrogramBuffer->scanLine(0));
@@ -1571,6 +1650,7 @@ void GLSpectrumView::paintGL()
         }
 
         m_3DSpectrogramBufferPos = 0;
+        update3DSpectrogramGlide(newRows);
 
         // Temporarily reduce viewport to waterfall area so anything outside is clipped
         if (window()->windowHandle()) {
@@ -1580,7 +1660,7 @@ void GLSpectrumView::paintGL()
         m_glShaderSpectrogram.drawSurface(
             m_3DSpectrogramStyle,
             spectrogramGridMatrix,
-            m_3DSpectrogramTexturePos,
+            m_3DSpectrogramTexturePos - m_3DSpectrogramLag,
             m_invertedWaterfall);
         glFunctions->glViewport(0, 0, width()*devicePixelRatio, height()*devicePixelRatio);
     }
@@ -3344,11 +3424,17 @@ void GLSpectrumView::stopDrag()
     }
 }
 
+// Number of spectra displayed along the time axis
+int GLSpectrumView::getDisplayedTimeRows() const
+{
+    return m_display3DSpectrogram ? m_3DSpectrogramDepth : m_waterfallHeight;
+}
+
 // Get text to display on waterfall vertical axis when displaying system time
-// value is [0,m_waterfallHeight], as set in setTimeScaleRange()
+// value is [0,getDisplayedTimeRows()], as set in setTimeScaleRange()
 QString GLSpectrumView::formatTick(double value) const
 {
-    int idx = value - scrollBarValue() + m_spectrumBuffer.size() - 1 - m_waterfallHeight;
+    int idx = value - scrollBarValue() + m_spectrumBuffer.size() - 1 - getDisplayedTimeRows();
 
     if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size()))
     {
@@ -3373,9 +3459,9 @@ void GLSpectrumView::setTimeScaleRange()
     {
         // System clock times from when spectrum was captured - mapped to actual times in formatTick()
         if (m_invertedWaterfall) {
-            m_timeScale.setRange(Unit::None, m_waterfallHeight, 0);
+            m_timeScale.setRange(Unit::None, getDisplayedTimeRows(), 0);
         } else {
-            m_timeScale.setRange(Unit::None, 0, m_waterfallHeight);
+            m_timeScale.setRange(Unit::None, 0, getDisplayedTimeRows());
         }
     }
     else if (getDisplayedSampleRate() > 0)
@@ -3388,7 +3474,7 @@ void GLSpectrumView::setTimeScaleRange()
 
         int idx = scrollBarValue();
         float timeMin = (idx * m_fftSize) / timeScaleDiv;
-        float timeMax = ((idx + m_waterfallHeight) * m_fftSize) / timeScaleDiv;
+        float timeMax = ((idx + getDisplayedTimeRows()) * m_fftSize) / timeScaleDiv;
 
         if (!m_invertedWaterfall) {
             m_timeScale.setRange(m_timingRate > 1 ? Unit::TimeHMS : Unit::Time, timeMax / timeScaleDiv, timeMin);
@@ -4083,8 +4169,10 @@ void GLSpectrumView::applyChanges()
     }
 
     bool windowSizeChanged = m_waterfallTextureHeight != m_waterfallHeight;
+    const int spectrogram3DHeight = m_3DSpectrogramDepth + GLShaderSpectrogram::TimeMarginRows;
+    bool depthChanged = m_3DSpectrogramTextureHeight != spectrogram3DHeight;
 
-    if (waterfallFFTSizeChanged || windowSizeChanged)
+    if (waterfallFFTSizeChanged || windowSizeChanged || depthChanged)
     {
         if (m_waterfallBuffer) {
             delete m_waterfallBuffer;
@@ -4103,7 +4191,7 @@ void GLSpectrumView::applyChanges()
             delete m_3DSpectrogramBuffer;
         }
 
-        m_3DSpectrogramBuffer = new QImage(m_nbBins + 1, m_waterfallHeight, QImage::Format_Grayscale8);
+        m_3DSpectrogramBuffer = new QImage(m_nbBins + 1, spectrogram3DHeight, QImage::Format_Grayscale8);
         m_3DSpectrogramBuffer->fill(qRgb(0x00, 0x00, 0x00));
 
         if (m_waterfallHeight > 0) {
@@ -4114,8 +4202,9 @@ void GLSpectrumView::applyChanges()
 
         m_waterfallTextureHeight = m_waterfallHeight;
         m_waterfallTexturePos = 0;
-        m_3DSpectrogramTextureHeight = m_waterfallHeight;
+        m_3DSpectrogramTextureHeight = spectrogram3DHeight;
         m_3DSpectrogramTexturePos = 0;
+        m_3DSpectrogramRefilled = true;
     }
 
     bool histogramFFTSizeChanged = true;
@@ -5440,6 +5529,10 @@ void GLSpectrumView::tick()
     {
         m_displayChanged = false;
         update();
+    }
+    else if (m_display3DSpectrogram)
+    {
+        update(); // The 3D spectrogram scrolls continuously between new spectra
     }
 }
 

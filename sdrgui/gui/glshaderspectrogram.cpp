@@ -160,10 +160,11 @@ void GLShaderSpectrogram::initGrid(int width, int height)
 {
     // There is one vertex per texture sample where possible. The final frequency
     // sample is the extra endpoint written by GLSpectrumView, so W samples form
-    // W-1 cells. Keeping the time vertices aligned with the H texture rows stops
-    // a stored spectrum being resampled as it advances through the circular texture.
+    // W-1 cells. In time, there is one grid row per displayed texture row, that is
+    // H - TimeMarginRows rows, so a stored spectrum is not resampled between whole
+    // row positions as it advances through the circular texture.
     int gridWidthElements = std::max(1, std::min(width - 1, 4096));
-    int gridHeightElements = std::max(1, std::min(height - 1, 4096));
+    int gridHeightElements = std::max(1, std::min(height - TimeMarginRows, 4096));
 
     if ((gridWidthElements == m_gridWidthElements) && (gridHeightElements == m_gridHeightElements)) {
         return;
@@ -387,7 +388,7 @@ void GLShaderSpectrogram::subTextureMutable(int xOffset, int yOffset, int width,
     glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, yOffset, width, height, GL_RED, GL_UNSIGNED_BYTE, pixels);
 }
 
-void GLShaderSpectrogram::drawSurface(SpectrumSettings::SpectrogramStyle style, const QMatrix4x4& vertexTransform, int texturePosition, bool invert)
+void GLShaderSpectrogram::drawSurface(SpectrumSettings::SpectrogramStyle style, const QMatrix4x4& vertexTransform, float texturePosition, bool invert)
 {
     if ((m_useImmutableStorage && !m_texture) || (!m_useImmutableStorage && !m_textureId))
     {
@@ -405,11 +406,17 @@ void GLShaderSpectrogram::drawSurface(SpectrumSettings::SpectrogramStyle style, 
         return;
     }
 
+    // The front edge shows the texture row at texturePosition - 1 (which can be fractional, in which case
+    // the heights are interpolated between two rows by the texture filter) and each grid row going
+    // back in time shows the previous texture row (the texture wraps around).
+    // When inverted, the front edge is at the far end of the surface.
     float direction = invert ? 1.0f : -1.0f;
+    float gridRows = (float) m_gridHeightElements;
+    float frontRow = texturePosition - 1.0f;
     float textureScaleX = (m_textureWidth - 1.0f) / m_textureWidth;
-    float textureScaleY = (m_textureHeight - 1.0f) / m_textureHeight;
+    float textureScaleY = gridRows / m_textureHeight;
     float textureOffsetX = 0.5f / m_textureWidth;
-    float textureOffsetY = (texturePosition + direction * 0.5f) / m_textureHeight;
+    float textureOffsetY = invert ? (frontRow - gridRows + 0.5f) / m_textureHeight : (frontRow + 0.5f) / m_textureHeight;
     QMatrix4x4 textureTransform(
         textureScaleX, 0.0, 0.0, textureOffsetX,
         0.0, direction * textureScaleY, 0.0, textureOffsetY,

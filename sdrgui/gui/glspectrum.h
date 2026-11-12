@@ -74,6 +74,7 @@ public:
     void setDisplayWaterfall(bool display) { m_spectrum->setDisplayWaterfall(display); }
     void setDisplay3DSpectrogram(bool display) { m_spectrum->setDisplay3DSpectrogram(display); }
     void set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style) { m_spectrum->set3DSpectrogramStyle(style); }
+    void set3DSpectrogramDepth(int depth) { m_spectrum->set3DSpectrogramDepth(depth); }
     void setSpectrumColor(QRgb color) { m_spectrum->setSpectrumColor(color); }
     void setColorMapName(const QString &colorMapName) { m_spectrum->setColorMapName(colorMapName); }
     void setSpectrumStyle(SpectrumSettings::SpectrumStyle style) { m_spectrum->setSpectrumStyle(style); }

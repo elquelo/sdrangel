@@ -33,6 +33,10 @@ class QImage;
 class SDRGUI_API GLShaderSpectrogram : protected QOpenGLFunctions
 {
 public:
+    //! Texture rows not shown as grid rows: up to 2 rows of display lag (to interpolate between the
+    //! last two rows) and 1 so that the oldest displayed row is never blended with the newest one
+    static const int TimeMarginRows = 3;
+
     GLShaderSpectrogram();
     ~GLShaderSpectrogram();
 
@@ -40,7 +44,9 @@ public:
     void initColorMapTexture(const QString &colorMapName);
     void initTexture(const QImage& image);
     void subTexture(int xOffset, int yOffset, int width, int height, const void *pixels);
-    void drawSurface(SpectrumSettings::SpectrogramStyle style, const QMatrix4x4& vertexTransform, int texturePosition, bool invert);
+    //! Draw the surface. texturePosition is the (fractional) texture row that follows the most recent row
+    //! displayed at the front edge. A fractional position makes the surface glide between whole rows.
+    void drawSurface(SpectrumSettings::SpectrogramStyle style, const QMatrix4x4& vertexTransform, float texturePosition, bool invert);
     void cleanup();
     void translateX(float distance);
     void translateY(float distance);

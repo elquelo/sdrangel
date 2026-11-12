@@ -211,6 +211,8 @@ void GLSpectrumGUI::displaySettings()
     ui->spectrogram->blockSignals(false);
     ui->spectrogramStyle->setCurrentIndex((int) m_settings.m_3DSpectrogramStyle);
     ui->spectrogramStyle->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls == SpectrumSettings::ShowAll));
+    ui->spectrogramDepth->setValue(m_settings.m_3DSpectrogramDepth);
+    ui->spectrogramDepth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls == SpectrumSettings::ShowAll));
     ui->colorMap->setCurrentText(m_settings.m_colorMap);
     ui->currentLine->blockSignals(true);
     ui->currentFill->blockSignals(true);
@@ -317,6 +319,7 @@ void GLSpectrumGUI::displayControls()
     ui->waterfall->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->spectrogram->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->spectrogramStyle->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll && m_settings.m_display3DSpectrogram);
+    ui->spectrogramDepth->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll && m_settings.m_display3DSpectrogram);
     ui->fftWindow->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->fftSize->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->fftOverlap->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll);
@@ -395,6 +398,7 @@ void GLSpectrumGUI::applySpectrumSettings()
     m_glSpectrum->setDisplayWaterfall(m_settings.m_displayWaterfall);
     m_glSpectrum->setDisplay3DSpectrogram(m_settings.m_display3DSpectrogram);
     m_glSpectrum->set3DSpectrogramStyle(m_settings.m_3DSpectrogramStyle);
+    m_glSpectrum->set3DSpectrogramDepth(m_settings.m_3DSpectrogramDepth);
     m_glSpectrum->setSpectrumColor(m_settings.m_spectrumColor);
     m_glSpectrum->setColorMapName(m_settings.m_colorMap);
     m_glSpectrum->setSpectrumStyle(m_settings.m_spectrumStyle);
@@ -777,6 +781,12 @@ void GLSpectrumGUI::on_spectrogramStyle_currentIndexChanged(int index)
     applySettings();
 }
 
+void GLSpectrumGUI::on_spectrogramDepth_valueChanged(int value)
+{
+    m_settings.m_3DSpectrogramDepth = value;
+    applySettings();
+}
+
 void GLSpectrumGUI::on_colorMap_currentIndexChanged(int index)
 {
     (void) index;
@@ -806,6 +816,7 @@ void GLSpectrumGUI::on_spectrogram_toggled(bool checked)
         blockApplySettings(blocked);
     }
     ui->spectrogramStyle->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls >= SpectrumSettings::ShowAll));
+    ui->spectrogramDepth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls >= SpectrumSettings::ShowAll));
     applySettings();
 }
 

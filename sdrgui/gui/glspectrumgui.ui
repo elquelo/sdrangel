@@ -502,6 +502,40 @@
        </item>
       </widget>
      </item>
+     <item>
+      <widget class="QSpinBox" name="spectrogramDepth">
+       <property name="minimumSize">
+        <size>
+         <width>60</width>
+         <height>24</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>3D spectrogram depth (number of spectra displayed)</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       </property>
+       <property name="minimum">
+        <number>16</number>
+       </property>
+       <property name="maximum">
+        <number>1024</number>
+       </property>
+       <property name="singleStep">
+        <number>16</number>
+       </property>
+       <property name="value">
+        <number>128</number>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
