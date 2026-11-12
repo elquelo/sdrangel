@@ -188,17 +188,20 @@ void LevelMeterVU::resized()
         delete m_backgroundPixmap;
     }
 
-    m_backgroundPixmap = new QPixmap(rect().width(), rect().height());
+    // Render the background at the device resolution so that the scale stays sharp on HiDPI displays
+    const qreal dpr = devicePixelRatioF();
+    m_backgroundPixmap = new QPixmap((rect().size() * dpr).expandedTo(QSize(1, 1)));
+    m_backgroundPixmap->setDevicePixelRatio(dpr);
     m_backgroundPixmap->fill(QColor(42, 42, 42, 255));
 
     QPainter painter(m_backgroundPixmap);
-    QRect barTop = m_backgroundPixmap->rect();
+    QRect barTop = rect(); // logical coordinates: the pixmap rect is in device pixels
     barTop.setBottom(0.5 * rect().height() - 2);
     barTop.setTop(2);
     barTop.setLeft(0.75* rect().width());
     painter.fillRect(barTop, Qt::red);
 
-    QRect bar = m_backgroundPixmap->rect();
+    QRect bar = rect(); // logical coordinates: the pixmap rect is in device pixels
 
     // 100% full height white line
     painter.setPen(Qt::white);
@@ -321,11 +324,14 @@ void LevelMeterSignalDB::resized()
         delete m_backgroundPixmap;
     }
 
-    m_backgroundPixmap = new QPixmap(rect().width(), rect().height());
+    // Render the background at the device resolution so that the scale stays sharp on HiDPI displays
+    const qreal dpr = devicePixelRatioF();
+    m_backgroundPixmap = new QPixmap((rect().size() * dpr).expandedTo(QSize(1, 1)));
+    m_backgroundPixmap->setDevicePixelRatio(dpr);
     m_backgroundPixmap->fill(QColor(42, 42, 42, 255));
 
     QPainter painter(m_backgroundPixmap);
-    QRect bar = m_backgroundPixmap->rect();
+    QRect bar = rect(); // logical coordinates: the pixmap rect is in device pixels
 
     // 100% full height white line
     painter.setPen(Qt::white);
