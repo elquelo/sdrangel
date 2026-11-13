@@ -255,6 +255,8 @@ public:
     ~FT8();
     // Number of passes
     void set_npasses(int npasses) { npasses_ = npasses; }
+    //! Share a flag that makes go() return as soon as possible when set
+    void set_abort_flag(const std::shared_ptr<std::atomic<bool>>& abortFlag) { abort_ = abortFlag; }
     // Start the worker
     void start_work();
     // strength of costas block of signal with tone 0 at bi0,
@@ -633,9 +635,6 @@ private:
         float hz0_for_cb,
         float hz1_for_cb
     );
-
-    //! Share a flag that makes go() return as soon as possible when set
-    void set_abort_flag(const std::shared_ptr<std::atomic<bool>>& abortFlag) { abort_ = abortFlag; }
 
 signals:
     void finished();
