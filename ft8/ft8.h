@@ -24,6 +24,8 @@
 #define ft8_h
 
 #include <vector>
+#include <memory>
+#include <atomic>
 
 #include <QObject>
 #include <QMutex>
@@ -632,9 +634,15 @@ private:
         float hz1_for_cb
     );
 
+    //! Share a flag that makes go() return as soon as possible when set
+    void set_abort_flag(const std::shared_ptr<std::atomic<bool>>& abortFlag) { abort_ = abortFlag; }
+
 signals:
     void finished();
 private:
+    bool aborted() const { return abort_ && abort_->load(std::memory_order_relaxed); }
+
+    std::shared_ptr<std::atomic<bool>> abort_; //!< set by the decoder to stop the work early
     FT8Params params;
     FFTEngine *fftEngine_;
     int npasses_;
@@ -687,13 +695,16 @@ public:
         int,
         struct cdecode *
     );
-    void wait(double time_left); //!< wait for all threads to finish
-    void forceQuit(); //!< force quit all threads
+    //! Wait for all threads to finish. When they have not finished after time_left seconds
+    //! they are asked to stop and waited for, so they never outlive the callback they report to.
+    void wait(double time_left);
+    void forceQuit(); //!< ask all threads to stop and wait for them
     FT8Params& getParams() { return params; }
 private:
     FT8Params params;
     std::vector<QThread*> threads;
     std::vector<FFTEngine*> fftEngines;
+    std::shared_ptr<std::atomic<bool>> abort_ = std::make_shared<std::atomic<bool>>(false); //!< shared with the threads
 }; // FT8Decoder
 
 } // namespace FT8

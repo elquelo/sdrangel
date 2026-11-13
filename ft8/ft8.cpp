@@ -564,6 +564,10 @@ void FT8::go(int npasses)
 
     for (pass_ = 0; pass_ < npasses; pass_++)
     {
+        if (aborted()) {
+            break;
+        }
+
         double total_remaining = deadline_ - now();
         double remaining = total_remaining / (npasses - pass_);
 
@@ -634,6 +638,10 @@ void FT8::go(int npasses)
 
         for (int ii = 0; ii < (int)order.size(); ii++)
         {
+            if (aborted()) {
+                break;
+            }
+
             double tt = now();
 
             if (ii > 0 &&
@@ -3628,6 +3636,8 @@ void FT8Decoder::entry(
     struct cdecode *xprevdecs
 )
 {
+    forceQuit(); // threads of a previous run must be gone before the abort flag is cleared
+    abort_->store(false);
     double t0 = now();
     double deadline = t0 + time_left;
     double final_deadline = t0 + total_time_left;
@@ -3691,6 +3701,7 @@ void FT8Decoder::entry(
         );
 
         ft8->getParams() = getParams(); // transfer parameters
+        ft8->set_abort_flag(abort_);
         int npasses = nprevdecs > 0 ? params.npasses_two : params.npasses_one;
         ft8->set_npasses(npasses);
         QThread *th = new QThread();
@@ -3713,14 +3724,17 @@ void FT8Decoder::wait(double time_left)
 
     while (threads.size() != 0)
     {
-        bool success = threads.front()->wait(thread_timeout);
+        QThread *thread = threads.front();
 
-        if (!success)
+        if (!abort_->load() && !thread->wait(thread_timeout))
         {
             qDebug("FT8::FT8Decoder::wait: thread timed out");
-            thread_timeout = 50; // only 50ms for the rest
+            abort_->store(true); // the threads stop at their next candidate
         }
 
+        // A thread cannot be left running: it reports to the callback of the caller
+        // which is destroyed when the caller returns.
+        thread->wait();
         threads.erase(threads.begin());
     }
 }
@@ -3729,6 +3743,7 @@ void FT8Decoder::forceQuit()
 {
     while (threads.size() != 0)
     {
+        abort_->store(true);
         threads.front()->quit();
         threads.front()->wait();
         threads.erase(threads.begin());
