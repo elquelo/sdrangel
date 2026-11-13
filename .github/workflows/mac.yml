@@ -10,7 +10,7 @@ on:
 
 jobs:
   build_mac_arm64:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,7 +94,7 @@ jobs:
       matrix:
         include:
           - arch: arm64
-            runner: macos-15
+            runner: macos-26
             artifact_pattern: sdrangel-*-macarm64.dmg
 
     runs-on: ${{ matrix.runner }}
