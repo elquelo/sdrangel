@@ -147,6 +147,7 @@ void GLSpectrumGUI::setBuddies(SpectrumVis* spectrumVis, GLSpectrum* glSpectrum)
 void GLSpectrumGUI::resetToDefaults()
 {
     m_settings.resetToDefaults();
+    m_glSpectrum->set3DSpectrogramView(m_settings.m_3DSpectrogramView);
     displaySettings();
     applySettings();
 }
@@ -165,6 +166,7 @@ bool GLSpectrumGUI::deserialize(const QByteArray& data)
         m_glSpectrum->setHistogramMarkers(m_settings.getHistogramMarkers());
         m_glSpectrum->setWaterfallMarkers(m_settings.getWaterfallMarkers());
         m_glSpectrum->setFrequencyZooming(m_settings.m_frequencyZoomFactor, m_settings.m_frequencyZoomPos);
+        m_glSpectrum->set3DSpectrogramView(m_settings.m_3DSpectrogramView);
         setAveragingCombo();
         displaySettings(); // restores the blocked state it found
         applySettings();
@@ -1163,6 +1165,12 @@ bool GLSpectrumGUI::handleMessage(const Message& message)
         const GLSpectrumView::MsgFrequencyZooming& report = (const GLSpectrumView::MsgFrequencyZooming&) message;
         m_settings.m_frequencyZoomFactor = report.getFrequencyZoomFactor();
         m_settings.m_frequencyZoomPos = report.getFrequencyZoomPos();
+        return true;
+    }
+    else if (GLSpectrumView::MsgSpectrogram3DView::match(message))
+    {
+        const GLSpectrumView::MsgSpectrogram3DView& report = (const GLSpectrumView::MsgSpectrogram3DView&) message;
+        m_settings.m_3DSpectrogramView = report.getView();
         return true;
     }
     else if (SpectrumVis::MsgStartStop::match(message))

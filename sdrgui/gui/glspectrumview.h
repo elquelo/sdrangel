@@ -183,6 +183,25 @@ public:
         { }
     };
 
+    class MsgSpectrogram3DView : public Message {
+        MESSAGE_CLASS_DECLARATION
+
+    public:
+        const SpectrumSettings::Spectrogram3DView& getView() const { return m_view; }
+
+        static MsgSpectrogram3DView* create(const SpectrumSettings::Spectrogram3DView& view) {
+            return new MsgSpectrogram3DView(view);
+        }
+
+    private:
+        SpectrumSettings::Spectrogram3DView m_view;
+
+        MsgSpectrogram3DView(const SpectrumSettings::Spectrogram3DView& view) :
+            Message(),
+            m_view(view)
+        { }
+    };
+
     GLSpectrumView(QWidget* parent = nullptr);
     virtual ~GLSpectrumView();
 
@@ -204,6 +223,7 @@ public:
     void setDisplay3DSpectrogram(bool display);
     void set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style);
     void set3DSpectrogramDepth(int depth);
+    void set3DSpectrogramView(const SpectrumSettings::Spectrogram3DView& view);
     void setSpectrumColor(QRgb color);
     void setColorMapName(const QString &colorMapName);
     void setSpectrumStyle(SpectrumSettings::SpectrumStyle style);
@@ -589,6 +609,7 @@ private:
     void timeZoom(bool zoomInElseOut);
     void powerZoom(float pw, bool zoomInElseOut);
     void resetFrequencyZoom();
+    void report3DSpectrogramView(); //!< Tell the GUI the 3D view changed, so that it is saved with the settings
     void updateFFTLimits(bool fftSizeOnly);
     void setFrequencyScale();
     void setPowerScale(int height);

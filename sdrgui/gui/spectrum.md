@@ -564,3 +564,5 @@ Or keyboard:
   - CTRL '+'/'-': Scale Z axis (power)
   - 'r': Reset view to default
   - 'f': Flat view (top down)
+
+The view (rotation, position, zoom, scale of the Z axis and lighting) is saved with the spectrum settings and restored at the next start. The 'r' key resets it to the default view.
