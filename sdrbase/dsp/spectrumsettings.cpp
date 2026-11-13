@@ -70,6 +70,7 @@ void SpectrumSettings::resetToDefaults()
 	m_calibrationInterpMode = CalibInterpLinear;
     m_3DSpectrogramStyle = Outline;
     m_3DSpectrogramDepth = m_3DSpectrogramDefaultDepth;
+    m_3DSpectrogramSmooth = true;
     m_colorMap = "Angel";
     m_spectrumStyle = Line;
     m_measurement = MeasurementNone;
@@ -193,6 +194,7 @@ QByteArray SpectrumSettings::serialize() const
 	s.writeS32(63, (int) m_showControls);
 	s.writeU32(64, m_spectrumColor);
 	s.writeS32(65, m_3DSpectrogramDepth);
+	s.writeBool(66, m_3DSpectrogramSmooth);
 
     s.writeS32(100, m_histogramMarkers.size());
 
@@ -286,6 +288,7 @@ bool SpectrumSettings::deserialize(const QByteArray& data)
         d.readS32(32, (int*)&m_3DSpectrogramStyle, (int)Outline);
         d.readS32(65, &m_3DSpectrogramDepth, m_3DSpectrogramDefaultDepth);
         m_3DSpectrogramDepth = clamp3DSpectrogramDepth(m_3DSpectrogramDepth);
+        d.readBool(66, &m_3DSpectrogramSmooth, true);
         d.readString(33, &m_colorMap, "Angel");
         d.readS32(34, (int*)&m_spectrumStyle, (int)Line);
         d.readS32(35, (int*)&m_measurement, (int)MeasurementNone);
@@ -416,6 +419,7 @@ void SpectrumSettings::formatTo(SWGSDRangel::SWGObject *swgObject) const
     swgSpectrum->setDisplay3DSpectrogram(m_display3DSpectrogram ? 1 : 0);
     swgSpectrum->setSpectrogramStyle((int) m_3DSpectrogramStyle);
     swgSpectrum->setSpectrogramDepth(m_3DSpectrogramDepth);
+    swgSpectrum->setSpectrogramSmooth(m_3DSpectrogramSmooth ? 1 : 0);
     swgSpectrum->setDisplayGrid(m_displayGrid ? 1 : 0);
     swgSpectrum->setDisplayGridIntensity(m_displayGridIntensity);
 	swgSpectrum->setSsb(m_ssb ? 1 : 0);
@@ -625,6 +629,9 @@ void SpectrumSettings::updateFrom(const QStringList& keys, const SWGSDRangel::SW
 	}
 	if (keys.contains("spectrumConfig.spectrogramDepth")) {
 		m_3DSpectrogramDepth = clamp3DSpectrogramDepth(swgSpectrum->getSpectrogramDepth());
+	}
+	if (keys.contains("spectrumConfig.spectrogramSmooth")) {
+		m_3DSpectrogramSmooth = swgSpectrum->getSpectrogramSmooth() != 0;
 	}
 	if (keys.contains("spectrumConfig.displayGrid")) {
 		m_displayGrid = swgSpectrum->getDisplayGrid() != 0;

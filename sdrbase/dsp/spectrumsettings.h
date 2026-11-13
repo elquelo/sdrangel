@@ -170,6 +170,7 @@ public:
 	CalibrationInterpolationMode m_calibrationInterpMode; //!< How is power interpolated between calibration points
     SpectrogramStyle m_3DSpectrogramStyle;
     int m_3DSpectrogramDepth;    //!< Number of spectra displayed in the 3D spectrogram
+    bool m_3DSpectrogramSmooth;  //!< Scroll the 3D spectrogram continuously between new spectra (costs a repaint at every refresh)
     QString m_colorMap;
     SpectrumStyle m_spectrumStyle;
     Measurement m_measurement;
