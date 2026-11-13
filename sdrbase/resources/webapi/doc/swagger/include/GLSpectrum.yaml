@@ -167,6 +167,11 @@ GLSpectrum:
       type: integer
       minimum: 0
       maximum: 4
+    spectrogramDepth:
+      description: Number of spectra (rows in time) displayed in the 3D spectrogram.
+      type: integer
+      minimum: 16
+      maximum: 1024
     truncateFreqScale:
       description: Truncate the frequency scale to the displayed span (1 for yes, 0 for no).
       type: integer

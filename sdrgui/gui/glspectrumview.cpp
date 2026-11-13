@@ -47,6 +47,16 @@
 
 #include <QDebug>
 
+namespace
+{
+    // Size of a pixmap in device independent (logical) pixels.
+    // QPixmap::deviceIndependentSize() is only available from Qt 6.2.
+    QSize getLogicalSize(const QPixmap& pixmap)
+    {
+        return (QSizeF(pixmap.size()) / pixmap.devicePixelRatioF()).toSize();
+    }
+}
+
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportSampleRate, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportWaterfallShare, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportFFTOverlap, Message)
@@ -111,6 +121,12 @@ GLSpectrumView::GLSpectrumView(QWidget* parent) :
     m_3DSpectrogramBufferPos(0),
     m_3DSpectrogramTextureHeight(-1),
     m_3DSpectrogramTexturePos(0),
+    m_3DSpectrogramDepth(SpectrumSettings::m_3DSpectrogramDefaultDepth),
+    m_3DSpectrogramLag(1.0f),
+    m_3DSpectrogramRowPeriodMs(100.0),
+    m_3DSpectrogramGlideLastMs(0.0),
+    m_3DSpectrogramGlideLastRowsMs(0.0),
+    m_3DSpectrogramRefilled(true),
     m_display3DSpectrogram(false),
     m_rotate3DSpectrogram(false),
     m_pan3DSpectrogram(false),
@@ -436,6 +452,7 @@ void GLSpectrumView::setDisplay3DSpectrogram(bool display)
 {
     m_mutex.lock();
     m_display3DSpectrogram = display;
+    m_3DSpectrogramRefilled = true; // Timing of the new rows is not known after the display was off
     m_changesPending = true;
     stopDrag();
     m_mutex.unlock();
@@ -451,6 +468,20 @@ void GLSpectrumView::setSpectrumStyle(SpectrumSettings::SpectrumStyle style)
 void GLSpectrumView::set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style)
 {
     m_3DSpectrogramStyle = style;
+    update();
+}
+
+void GLSpectrumView::set3DSpectrogramDepth(int depth)
+{
+    QMutexLocker mutexLocker(&m_mutex);
+    depth = SpectrumSettings::clamp3DSpectrogramDepth(depth);
+
+    if (depth != m_3DSpectrogramDepth)
+    {
+        m_3DSpectrogramDepth = depth;
+        m_changesPending = true;
+        m_redrawAll = true;
+    }
     update();
 }
 
@@ -1017,22 +1048,35 @@ void GLSpectrumView::redrawWaterfallAnd3DSpectrogram()
 
         m_waterfallBufferPos = 0;
         m_waterfallTexturePos = 0;
-        m_3DSpectrogramBufferPos = 0;
-        m_3DSpectrogramTexturePos = 0;
 
         for (int i = 0; i < m_waterfallBuffer->height(); i++)
         {
-            if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size()))
-            {
+            if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size())) {
                 updateWaterfall(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
-                update3DSpectrogram(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
-            }
-            else
-            {
+            } else {
                 clearWaterfallRow(m_nbBins);
-                clear3DSpectrogramRow(m_nbBins);
             }
             idx++;
+        }
+
+        if (m_3DSpectrogramBuffer)
+        {
+            // The 3D spectrogram has its own number of rows
+            idx = m_spectrumBuffer.size() - 1 - m_3DSpectrogramBuffer->height() - scrollBarValue();
+
+            m_3DSpectrogramBufferPos = 0;
+            m_3DSpectrogramTexturePos = 0;
+            m_3DSpectrogramRefilled = true;
+
+            for (int i = 0; i < m_3DSpectrogramBuffer->height(); i++)
+            {
+                if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size())) {
+                    update3DSpectrogram(m_spectrumBuffer[idx].m_spectrum, m_fftSize, m_fftMin, m_nbBins);
+                } else {
+                    clear3DSpectrogramRow(m_nbBins);
+                }
+                idx++;
+            }
         }
     }
 }
@@ -1313,6 +1357,49 @@ void GLSpectrumView::update3DSpectrogram(const Real *spectrum, int fftSize, int 
     }
 }
 
+// Make the 3D spectrogram scroll continuously rather than by a whole row each time a new spectrum arrives.
+// The displayed front edge trails the newest row by m_3DSpectrogramLag rows (kept between 0 and 2)
+// and advances with time at the rate at which rows arrive. The texture filter then interpolates the
+// heights between the two rows around the front edge. A new row adds one row of lag.
+// A gentle correction brings the lag back to about one row, so that it does not drift
+// to a point where the surface has to stop (no newer row available) or to jump forward.
+// newRows is the number of rows that were added since the last call.
+void GLSpectrumView::update3DSpectrogramGlide(int newRows)
+{
+    if (!m_3DSpectrogramGlideTimer.isValid())
+    {
+        m_3DSpectrogramGlideTimer.start();
+        m_3DSpectrogramGlideLastMs = 0.0;
+        m_3DSpectrogramGlideLastRowsMs = 0.0;
+        m_3DSpectrogramLag = 1.0f;
+        return;
+    }
+
+    const double nowMs = m_3DSpectrogramGlideTimer.nsecsElapsed() / 1e6;
+    const double elapsedMs = nowMs - m_3DSpectrogramGlideLastMs;
+    m_3DSpectrogramGlideLastMs = nowMs;
+
+    if (m_3DSpectrogramRefilled)
+    {
+        // All rows were rewritten from the history: no information on timing
+        m_3DSpectrogramRefilled = false;
+        m_3DSpectrogramGlideLastRowsMs = nowMs;
+        m_3DSpectrogramLag = 1.0f;
+        return;
+    }
+
+    if (newRows > 0)
+    {
+        const double periodMs = (nowMs - m_3DSpectrogramGlideLastRowsMs) / newRows;
+        m_3DSpectrogramGlideLastRowsMs = nowMs;
+        m_3DSpectrogramRowPeriodMs = 0.9 * m_3DSpectrogramRowPeriodMs + 0.1 * std::max(1.0, std::min(periodMs, 5000.0));
+    }
+
+    const float speed = 1.0f + 0.25f * (m_3DSpectrogramLag - 1.0f);
+    m_3DSpectrogramLag += newRows - (float) (elapsedMs / m_3DSpectrogramRowPeriodMs) * speed;
+    m_3DSpectrogramLag = std::max(0.0f, std::min(m_3DSpectrogramLag, 2.0f));
+}
+
 void GLSpectrumView::updateHistogram(const Real *spectrum, int fftMin, int nbBins)
 {
     quint8* b = m_histogram;
@@ -1556,6 +1643,8 @@ void GLSpectrumView::paintGL()
     {
         m_glShaderSpectrogram.applyTransform(spectrogramGridMatrix);
         // paint 3D spectrogram
+        const int newRows = m_3DSpectrogramBufferPos;
+
         if (m_3DSpectrogramTexturePos + m_3DSpectrogramBufferPos < m_3DSpectrogramTextureHeight)
         {
             m_glShaderSpectrogram.subTexture(0, m_3DSpectrogramTexturePos, m_nbBins + 1, m_3DSpectrogramBufferPos,  m_3DSpectrogramBuffer->scanLine(0));
@@ -1571,6 +1660,7 @@ void GLSpectrumView::paintGL()
         }
 
         m_3DSpectrogramBufferPos = 0;
+        update3DSpectrogramGlide(newRows);
 
         // Temporarily reduce viewport to waterfall area so anything outside is clipped
         if (window()->windowHandle()) {
@@ -1580,7 +1670,7 @@ void GLSpectrumView::paintGL()
         m_glShaderSpectrogram.drawSurface(
             m_3DSpectrogramStyle,
             spectrogramGridMatrix,
-            m_3DSpectrogramTexturePos,
+            m_3DSpectrogramTexturePos - m_3DSpectrogramLag,
             m_invertedWaterfall);
         glFunctions->glViewport(0, 0, width()*devicePixelRatio, height()*devicePixelRatio);
     }
@@ -1838,9 +1928,9 @@ void GLSpectrumView::paintGL()
     {
         glFunctions->glViewport(0, m_3DSpectrogramBottom*devicePixelRatio, width()*devicePixelRatio, m_waterfallHeight*devicePixelRatio);
         {
-            GLfloat l = m_spectrogramTimePixmap.width() / (GLfloat) width();
+            GLfloat l = getLogicalSize(m_spectrogramTimePixmap).width() / (GLfloat) width();
             GLfloat r = m_rightMargin / (GLfloat) width();
-            GLfloat h = m_frequencyPixmap.height() / (GLfloat) m_waterfallHeight;
+            GLfloat h = getLogicalSize(m_frequencyPixmap).height() / (GLfloat) m_waterfallHeight;
 
             GLfloat vtx1[] = {
                 -l, -    h,
@@ -1859,7 +1949,7 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramTimePixmap.width() / (GLfloat) width();
+            GLfloat w = getLogicalSize(m_spectrogramTimePixmap).width() / (GLfloat) width();
             GLfloat h = (m_bottomMargin/2) / (GLfloat) m_waterfallHeight;      // m_bottomMargin is fm.ascent
 
             GLfloat vtx1[] = {
@@ -1879,8 +1969,8 @@ void GLSpectrumView::paintGL()
         }
 
         {
-            GLfloat w = m_spectrogramPowerPixmap.width() / (GLfloat) width();
-            GLfloat h = m_topMargin / (GLfloat) m_spectrogramPowerPixmap.height();
+            GLfloat w = getLogicalSize(m_spectrogramPowerPixmap).width() / (GLfloat) width();
+            GLfloat h = m_topMargin / (GLfloat) getLogicalSize(m_spectrogramPowerPixmap).height();
 
             GLfloat vtx1[] = {
                 -w,   1.0f, 0.0f,
@@ -3344,11 +3434,17 @@ void GLSpectrumView::stopDrag()
     }
 }
 
+// Number of spectra displayed along the time axis
+int GLSpectrumView::getDisplayedTimeRows() const
+{
+    return m_display3DSpectrogram ? m_3DSpectrogramDepth : m_waterfallHeight;
+}
+
 // Get text to display on waterfall vertical axis when displaying system time
-// value is [0,m_waterfallHeight], as set in setTimeScaleRange()
+// value is [0,getDisplayedTimeRows()], as set in setTimeScaleRange()
 QString GLSpectrumView::formatTick(double value) const
 {
-    int idx = value - scrollBarValue() + m_spectrumBuffer.size() - 1 - m_waterfallHeight;
+    int idx = value - scrollBarValue() + m_spectrumBuffer.size() - 1 - getDisplayedTimeRows();
 
     if ((idx >= 0) && (idx < (int) m_spectrumBuffer.size()))
     {
@@ -3373,9 +3469,9 @@ void GLSpectrumView::setTimeScaleRange()
     {
         // System clock times from when spectrum was captured - mapped to actual times in formatTick()
         if (m_invertedWaterfall) {
-            m_timeScale.setRange(Unit::None, m_waterfallHeight, 0);
+            m_timeScale.setRange(Unit::None, getDisplayedTimeRows(), 0);
         } else {
-            m_timeScale.setRange(Unit::None, 0, m_waterfallHeight);
+            m_timeScale.setRange(Unit::None, 0, getDisplayedTimeRows());
         }
     }
     else if (getDisplayedSampleRate() > 0)
@@ -3388,7 +3484,7 @@ void GLSpectrumView::setTimeScaleRange()
 
         int idx = scrollBarValue();
         float timeMin = (idx * m_fftSize) / timeScaleDiv;
-        float timeMax = ((idx + m_waterfallHeight) * m_fftSize) / timeScaleDiv;
+        float timeMax = ((idx + getDisplayedTimeRows()) * m_fftSize) / timeScaleDiv;
 
         if (!m_invertedWaterfall) {
             m_timeScale.setRange(m_timingRate > 1 ? Unit::TimeHMS : Unit::Time, timeMax / timeScaleDiv, timeMin);
@@ -3406,6 +3502,17 @@ void GLSpectrumView::setTimeScaleRange()
     }
 }
 
+// Create a transparent pixmap at device resolution to draw scales and text that will be uploaded as textures.
+// Drawing coordinates and geometry stay in logical pixels, so the text is sharp on HiDPI displays.
+QPixmap GLSpectrumView::createTexturePixmap(int pixmapWidth, int pixmapHeight) const
+{
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmap(QSize(pixmapWidth, pixmapHeight) * dpr);
+    pixmap.setDevicePixelRatio(dpr);
+    pixmap.fill(Qt::transparent);
+    return pixmap;
+}
+
 void GLSpectrumView::paintLeftScales()
 {
     QFontMetrics fm(font());
@@ -3413,8 +3520,7 @@ void GLSpectrumView::paintLeftScales()
 
     float maxSize = 0.0f;
 
-    m_leftMarginPixmap = QPixmap(m_leftMargin - 1, height());
-    m_leftMarginPixmap.fill(Qt::transparent);
+    m_leftMarginPixmap = createTexturePixmap(m_leftMargin - 1, height());
     {
         QPainter painter(&m_leftMarginPixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -3900,8 +4006,7 @@ void GLSpectrumView::applyChanges()
 
     // prepare frequency scale
     if (m_displayWaterfall || m_display3DSpectrogram || m_displayHistogram || m_displayMaxHold || m_displayCurrent) {
-        m_frequencyPixmap = QPixmap(width(), m_frequencyScaleHeight);
-        m_frequencyPixmap.fill(Qt::transparent);
+        m_frequencyPixmap = createTexturePixmap(width(), m_frequencyScaleHeight);
         {
             QPainter painter(&m_frequencyPixmap);
             painter.setPen(Qt::NoPen);
@@ -3970,8 +4075,7 @@ void GLSpectrumView::applyChanges()
     }
     // prepare left scale for spectrogram (time)
     {
-        m_spectrogramTimePixmap = QPixmap(m_leftMargin - 1, fm.ascent() + m_waterfallHeight);
-        m_spectrogramTimePixmap.fill(Qt::transparent);
+        m_spectrogramTimePixmap = createTexturePixmap(m_leftMargin - 1, fm.ascent() + m_waterfallHeight);
         {
             QPainter painter(&m_spectrogramTimePixmap);
             painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -3995,8 +4099,7 @@ void GLSpectrumView::applyChanges()
     // prepare vertical scale for spectrogram (power)
     {
         int h = m_histogramHeight != 0 ? m_histogramHeight : m_waterfallHeight / 4;
-        m_spectrogramPowerPixmap = QPixmap(m_leftMargin - 1, m_topMargin + h);
-        m_spectrogramPowerPixmap.fill(Qt::transparent);
+        m_spectrogramPowerPixmap = createTexturePixmap(m_leftMargin - 1, m_topMargin + h);
         {
             QPainter painter(&m_spectrogramPowerPixmap);
             painter.setPen(QColor(0xf0, 0xf0, 0xff));
@@ -4036,8 +4139,7 @@ void GLSpectrumView::applyChanges()
     );
     QString infoText;
     formatTextInfo(infoText);
-    m_infoPixmap = QPixmap(width(), m_infoHeight);
-    m_infoPixmap.fill(Qt::transparent);
+    m_infoPixmap = createTexturePixmap(width(), m_infoHeight);
     {
         QPainter painter(&m_infoPixmap);
         painter.setPen(Qt::NoPen);
@@ -4077,8 +4179,10 @@ void GLSpectrumView::applyChanges()
     }
 
     bool windowSizeChanged = m_waterfallTextureHeight != m_waterfallHeight;
+    const int spectrogram3DHeight = m_3DSpectrogramDepth + GLShaderSpectrogram::TimeMarginRows;
+    bool depthChanged = m_3DSpectrogramTextureHeight != spectrogram3DHeight;
 
-    if (waterfallFFTSizeChanged || windowSizeChanged)
+    if (waterfallFFTSizeChanged || windowSizeChanged || depthChanged)
     {
         if (m_waterfallBuffer) {
             delete m_waterfallBuffer;
@@ -4097,7 +4201,7 @@ void GLSpectrumView::applyChanges()
             delete m_3DSpectrogramBuffer;
         }
 
-        m_3DSpectrogramBuffer = new QImage(m_nbBins + 1, m_waterfallHeight, QImage::Format_Grayscale8);
+        m_3DSpectrogramBuffer = new QImage(m_nbBins + 1, spectrogram3DHeight, QImage::Format_Grayscale8);
         m_3DSpectrogramBuffer->fill(qRgb(0x00, 0x00, 0x00));
 
         if (m_waterfallHeight > 0) {
@@ -4108,8 +4212,9 @@ void GLSpectrumView::applyChanges()
 
         m_waterfallTextureHeight = m_waterfallHeight;
         m_waterfallTexturePos = 0;
-        m_3DSpectrogramTextureHeight = m_waterfallHeight;
+        m_3DSpectrogramTextureHeight = spectrogram3DHeight;
         m_3DSpectrogramTexturePos = 0;
+        m_3DSpectrogramRefilled = true;
     }
 
     bool histogramFFTSizeChanged = true;
@@ -4650,7 +4755,7 @@ void GLSpectrumView::mouseMoveEvent(QMouseEvent* event)
         // Determine if user is trying to move the channel outside of the current frequency range
         // and if so, request an adjustment to the center frequency
         // FIXME: This doesn't take zoom into account, so only works when zoomed out
-        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.width() - 1);
+        Real freqAbs = m_frequencyScale.getValueFromPos(event->x() - getLogicalSize(m_leftMarginPixmap).width() - 1);
         Real freqMin = getDisplayedCenterFrequency() - getDisplayedSampleRate() / 2.0f;
         Real freqMax = getDisplayedCenterFrequency() + getDisplayedSampleRate() / 2.0f;
         if (freqAbs < freqMin) {
@@ -5002,7 +5107,7 @@ void GLSpectrumView::mousePressEvent(QMouseEvent* event)
             setCursor(Qt::SizeHorCursor);
             m_cursorState = CSChannelMoving;
             m_cursorChannel = 0;
-            Real freq = m_frequencyScale.getValueFromPos(event->x() - m_leftMarginPixmap.width() - 1) - getDisplayedCenterFrequency();
+            Real freq = m_frequencyScale.getValueFromPos(event->x() - getLogicalSize(m_leftMarginPixmap).width() - 1) - getDisplayedCenterFrequency();
 
             if (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getMovable()
                 && (m_channelMarkerStates[m_cursorChannel]->m_channelMarker->getSourceOrSinkStream() == m_displaySourceOrSink)
@@ -5503,6 +5608,10 @@ void GLSpectrumView::tick()
         m_displayChanged = false;
         update();
     }
+    else if (m_display3DSpectrogram)
+    {
+        update(); // The 3D spectrogram scrolls continuously between new spectra
+    }
 }
 
 void GLSpectrumView::channelMarkerChanged()
@@ -5754,8 +5863,7 @@ void GLSpectrumView::drawTextOverlayCentered (
     QFontMetricsF metrics(font);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    QPixmap channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    QPixmap channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));
@@ -5810,8 +5918,7 @@ void GLSpectrumView::drawTextOverlay(
     QFontMetricsF metrics(font);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    QPixmap channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    QPixmap channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));

@@ -37,6 +37,7 @@
 #include <QOpenGLDebugLogger>
 #include <QScrollBar>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include "gui/qtcompatibility.h"
 #include "gui/scaleengine.h"
 #include "gui/glshadersimple.h"
@@ -202,6 +203,7 @@ public:
     void setDisplayWaterfall(bool display);
     void setDisplay3DSpectrogram(bool display);
     void set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style);
+    void set3DSpectrogramDepth(int depth);
     void setSpectrumColor(QRgb color);
     void setColorMapName(const QString &colorMapName);
     void setSpectrumStyle(SpectrumSettings::SpectrumStyle style);
@@ -404,6 +406,13 @@ private:
     int m_3DSpectrogramBufferPos;
     int m_3DSpectrogramTextureHeight;
     int m_3DSpectrogramTexturePos;
+    int m_3DSpectrogramDepth;           //!< Number of spectra (rows in time) displayed in the 3D spectrogram
+    float m_3DSpectrogramLag;           //!< Rows by which the displayed front edge trails the newest row (0 to 2), makes the surface glide
+    double m_3DSpectrogramRowPeriodMs;  //!< Smoothed time between two new rows
+    double m_3DSpectrogramGlideLastMs;  //!< Time of the last glide update
+    double m_3DSpectrogramGlideLastRowsMs; //!< Time of the last glide update that had new rows
+    bool m_3DSpectrogramRefilled;       //!< History was redrawn: timing information is not valid for the next glide update
+    QElapsedTimer m_3DSpectrogramGlideTimer;
     bool m_display3DSpectrogram;
     bool m_rotate3DSpectrogram;     //!< Set when mouse is pressed in 3D spectrogram area for rotation when mouse is moved
     bool m_pan3DSpectrogram;
@@ -534,6 +543,8 @@ private:
     void updateWaterfall(const Real *spectrum, int fftSize, int fftMin, int nbBins);
     void clear3DSpectrogramRow(int nbBins);
     void update3DSpectrogram(const Real *spectrum, int fftSize, int fftMin, int nbBins);
+    void update3DSpectrogramGlide(int newRows);
+    int getDisplayedTimeRows() const;
     void updateHistogram(const Real *spectrum, int fftMin, int nbBins);
 
     void initializeGL();
@@ -619,6 +630,7 @@ private:
     void redrawSpectrum();
     void redrawWaterfallAnd3DSpectrogram();
     void paintLeftScales();
+    QPixmap createTexturePixmap(int pixmapWidth, int pixmapHeight) const;
     void paintStatusLineRight();
     void updateScrollBar();
     int scrollBarValue() const;

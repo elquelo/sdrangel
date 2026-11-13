@@ -75,6 +75,9 @@ public:
     qint32 getSpectrogramStyle();
     void setSpectrogramStyle(qint32 spectrogram_style);
 
+    qint32 getSpectrogramDepth();
+    void setSpectrogramDepth(qint32 spectrogram_depth);
+
     qint32 getTruncateFreqScale();
     void setTruncateFreqScale(qint32 truncate_freq_scale);
 
@@ -273,6 +276,9 @@ private:
 
     qint32 spectrogram_style;
     bool m_spectrogram_style_isSet;
+
+    qint32 spectrogram_depth;
+    bool m_spectrogram_depth_isSet;
 
     qint32 truncate_freq_scale;
     bool m_truncate_freq_scale_isSet;

@@ -169,6 +169,7 @@ public:
 	bool m_useCalibration;
 	CalibrationInterpolationMode m_calibrationInterpMode; //!< How is power interpolated between calibration points
     SpectrogramStyle m_3DSpectrogramStyle;
+    int m_3DSpectrogramDepth;    //!< Number of spectra displayed in the 3D spectrogram
     QString m_colorMap;
     SpectrumStyle m_spectrumStyle;
     Measurement m_measurement;
@@ -198,6 +199,10 @@ public:
     QRgb m_spectrumColor;
 
     static const int m_maxSpectrumMemories = 2; // As we only have two buttons in GUI
+    static const int m_3DSpectrogramMinDepth = 16;
+    static const int m_3DSpectrogramMaxDepth = 1024;
+    static const int m_3DSpectrogramDefaultDepth = 128;
+    static int clamp3DSpectrogramDepth(int depth) { return depth < m_3DSpectrogramMinDepth ? m_3DSpectrogramMinDepth : (depth > m_3DSpectrogramMaxDepth ? m_3DSpectrogramMaxDepth : depth); }
 
 	static const int m_log2FFTSizeMin = 6;   // 64
 	static const int m_log2FFTSizeMax = 15;  // 32k

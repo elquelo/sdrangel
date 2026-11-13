@@ -214,6 +214,12 @@ This dropdown determines how the 3D Spectrogram data is rendered.
   - **Outline**: The data are rendered as a solid surface with outlines of the polygons highlighted.
   - **Shaded**: The data are rendered as a solid surface with a combination of ambient and diffuse lighting. This requires OpenGL 3.3 or greater.
 
+<h4>B.3.5: 3D spectrogram depth</h4>
+
+This control is only visible when the 3D Spectrogram is being displayed.
+
+This sets the number of spectra (rows in time) that are displayed in the 3D Spectrogram, from 16 to 1024. It is independent of the height of the window. Fewer rows give a shorter time span, with a surface that is quicker to draw and more pronounced in perspective. The time scale follows this value. Between two new spectra the surface scrolls continuously, at a delay of about one spectrum.
+
 <h3>B.4: Spectrum FFT controls - block #4</h3>
 
 ![Spectrum GUI D](../../doc/img/MainWindow_spectrum_gui_D.png)

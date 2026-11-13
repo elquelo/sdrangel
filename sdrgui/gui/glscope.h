@@ -237,6 +237,7 @@ private:
 
     void mousePressEvent(QMouseEvent* event);
 
+    QPixmap createTexturePixmap(int pixmapWidth, int pixmapHeight, const QColor& fillColor = Qt::transparent) const; //!< Pixmap at device resolution for textures
     void drawChannelOverlay(      //!< Draws a text overlay
             const QString& text,
             const QColor& color,

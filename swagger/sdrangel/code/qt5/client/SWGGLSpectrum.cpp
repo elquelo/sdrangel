@@ -46,6 +46,9 @@ SWGGLSpectrum::SWGGLSpectrum() {
     m_display3_d_spectrogram_isSet = false;
     spectrogram_style = 0;
     m_spectrogram_style_isSet = false;
+
+    spectrogram_depth = 0;
+    m_spectrogram_depth_isSet = false;
     truncate_freq_scale = 0;
     m_truncate_freq_scale_isSet = false;
     color_map = nullptr;
@@ -184,6 +187,9 @@ SWGGLSpectrum::init() {
     m_display3_d_spectrogram_isSet = false;
     spectrogram_style = 0;
     m_spectrogram_style_isSet = false;
+
+    spectrogram_depth = 0;
+    m_spectrogram_depth_isSet = false;
     truncate_freq_scale = 0;
     m_truncate_freq_scale_isSet = false;
     color_map = new QString("");
@@ -432,6 +438,8 @@ SWGGLSpectrum::fromJsonObject(QJsonObject &pJson) {
     
     ::SWGSDRangel::setValue(&spectrogram_style, pJson["spectrogramStyle"], "qint32", "");
     
+    ::SWGSDRangel::setValue(&spectrogram_depth, pJson["spectrogramDepth"], "qint32", "");
+    
     ::SWGSDRangel::setValue(&truncate_freq_scale, pJson["truncateFreqScale"], "qint32", "");
     
     ::SWGSDRangel::setValue(&color_map, pJson["colorMap"], "QString", "QString");
@@ -586,6 +594,9 @@ SWGGLSpectrum::asJsonObject() {
     }
     if(m_spectrogram_style_isSet){
         obj->insert("spectrogramStyle", QJsonValue(spectrogram_style));
+    }
+    if(m_spectrogram_depth_isSet){
+        obj->insert("spectrogramDepth", QJsonValue(spectrogram_depth));
     }
     if(m_truncate_freq_scale_isSet){
         obj->insert("truncateFreqScale", QJsonValue(truncate_freq_scale));
@@ -847,6 +858,16 @@ void
 SWGGLSpectrum::setSpectrogramStyle(qint32 spectrogram_style) {
     this->spectrogram_style = spectrogram_style;
     this->m_spectrogram_style_isSet = true;
+}
+
+qint32
+SWGGLSpectrum::getSpectrogramDepth() {
+    return spectrogram_depth;
+}
+void
+SWGGLSpectrum::setSpectrogramDepth(qint32 spectrogram_depth) {
+    this->spectrogram_depth = spectrogram_depth;
+    this->m_spectrogram_depth_isSet = true;
 }
 
 qint32
@@ -1439,6 +1460,9 @@ SWGGLSpectrum::isSet(){
             isObjectUpdated = true; break;
         }
         if(m_spectrogram_style_isSet){
+            isObjectUpdated = true; break;
+        }
+        if(m_spectrogram_depth_isSet){
             isObjectUpdated = true; break;
         }
         if(m_truncate_freq_scale_isSet){

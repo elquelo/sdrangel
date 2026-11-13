@@ -1229,14 +1229,11 @@ void GLScope::setUniqueDisplays()
     { // X horizontal scale (X1)
         m_x1Scale.setSize(scopeWidth);
 
-        m_bot1ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot1ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1257,14 +1254,11 @@ void GLScope::setUniqueDisplays()
     { // Y horizontal scale (X2)
         m_x2Scale.setSize(scopeWidth);
 
-        m_bot2ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot2ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1285,14 +1279,11 @@ void GLScope::setUniqueDisplays()
     { //  X vertical scale (Y1)
         m_y1Scale.setSize(scopeHeight);
 
-        m_left1ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left1ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1313,14 +1304,11 @@ void GLScope::setUniqueDisplays()
     { // Y vertical scale (Y2)
         m_y2Scale.setSize(scopeHeight);
 
-        m_left2ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left2ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1413,14 +1401,11 @@ void GLScope::setVerticalDisplays()
     { // X horizontal scale (X1)
         m_x1Scale.setSize(scopeWidth);
 
-        m_bot1ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot1ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1440,14 +1425,11 @@ void GLScope::setVerticalDisplays()
 
     { // Y horizontal scale (X2)
         m_x2Scale.setSize(scopeWidth);
-        m_bot2ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot2ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1468,14 +1450,11 @@ void GLScope::setVerticalDisplays()
     { //  X vertical scale (Y1)
         m_y1Scale.setSize(scopeHeight);
 
-        m_left1ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left1ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1496,14 +1475,11 @@ void GLScope::setVerticalDisplays()
     { // Y vertical scale (Y2)
         m_y2Scale.setSize(scopeHeight);
 
-        m_left2ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left2ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1594,14 +1570,11 @@ void GLScope::setHorizontalDisplays()
     { // X horizontal scale (X1)
         m_x1Scale.setSize(scopeWidth);
 
-        m_bot1ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot1ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1622,14 +1595,11 @@ void GLScope::setHorizontalDisplays()
 
     { // Y horizontal scale (X2)
         m_x2Scale.setSize(scopeWidth);
-        m_bot2ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot2ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1650,14 +1620,11 @@ void GLScope::setHorizontalDisplays()
     { // X vertical scale (Y1)
         m_y1Scale.setSize(scopeHeight);
 
-        m_left1ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left1ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1678,14 +1645,11 @@ void GLScope::setHorizontalDisplays()
     { // Y vertical scale (Y2)
         m_y2Scale.setSize(scopeHeight);
 
-        m_left2ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left2ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1786,14 +1750,11 @@ void GLScope::setPolarDisplays()
     { // Mixed XY horizontal scale (X1)
         m_x1Scale.setSize(scopeWidth);
 
-        m_bot1ScalePixmap = QPixmap(
-            scopeWidth,
-            m_botMargin - 1);
+        m_bot1ScalePixmap = createTexturePixmap(scopeWidth, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1813,14 +1774,11 @@ void GLScope::setPolarDisplays()
 
     { // Polar XY horizontal scale (X2)
         m_x2Scale.setSize(scopeDim);
-        m_bot2ScalePixmap = QPixmap(
-            scopeDim,
-            m_botMargin - 1);
+        m_bot2ScalePixmap = createTexturePixmap(scopeDim, m_botMargin - 1, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_bot2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_bot2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1841,14 +1799,11 @@ void GLScope::setPolarDisplays()
     { // Mixed XY vertical scale (Y1)
         m_y1Scale.setSize(scopeHeight);
 
-        m_left1ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left1ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left1ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left1ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1870,14 +1825,11 @@ void GLScope::setPolarDisplays()
     { // Polar XY vertical scale (Y2)
         m_y2Scale.setSize(scopeHeight);
 
-        m_left2ScalePixmap = QPixmap(
-            m_leftMargin - 1,
-            scopeHeight);
+        m_left2ScalePixmap = createTexturePixmap(m_leftMargin - 1, scopeHeight, Qt::black);
 
         const ScaleEngine::TickList *tickList;
         const ScaleEngine::Tick *tick;
 
-        m_left2ScalePixmap.fill(Qt::black);
         QPainter painter(&m_left2ScalePixmap);
         painter.setPen(QColor(0xf0, 0xf0, 0xff));
         painter.setFont(font());
@@ -1960,6 +1912,17 @@ void GLScope::setYScale(ScaleEngine &scale, uint32_t highlightedTraceIndex)
     }
 }
 
+// Create a pixmap at device resolution to draw scales and text that will be uploaded as textures.
+// Drawing coordinates and geometry stay in logical pixels, so the text is sharp on HiDPI displays.
+QPixmap GLScope::createTexturePixmap(int pixmapWidth, int pixmapHeight, const QColor& fillColor) const
+{
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmap(QSize(pixmapWidth, pixmapHeight) * dpr);
+    pixmap.setDevicePixelRatio(dpr);
+    pixmap.fill(fillColor);
+    return pixmap;
+}
+
 void GLScope::drawChannelOverlay(
     const QString &text,
     const QColor &color,
@@ -1973,8 +1936,7 @@ void GLScope::drawChannelOverlay(
     QFontMetricsF metrics(m_channelOverlayFont);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));
@@ -2031,8 +1993,7 @@ void GLScope::drawTextOverlay(
     QFontMetricsF metrics(font);
     QRectF textRect = metrics.boundingRect(text);
     QRectF overlayRect(0, 0, textRect.width() * 1.05f + 4.0f, textRect.height());
-    QPixmap channelOverlayPixmap = QPixmap(overlayRect.width(), overlayRect.height());
-    channelOverlayPixmap.fill(Qt::transparent);
+    QPixmap channelOverlayPixmap = createTexturePixmap(overlayRect.width(), overlayRect.height());
     QPainter painter(&channelOverlayPixmap);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing, false);
     painter.fillRect(overlayRect, QColor(0, 0, 0, 0x80));
