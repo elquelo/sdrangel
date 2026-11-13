@@ -65,6 +65,7 @@ MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportCalibrationShift, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportHistogramMarkersChange, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportWaterfallMarkersChange, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgFrequencyZooming, Message)
+MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgSpectrogram3DView, Message)
 
 const float GLSpectrumView::m_maxFrequencyZoom = 50.0f;
 const float GLSpectrumView::m_annotationMarkerHeight = 20.0f;
@@ -483,6 +484,19 @@ void GLSpectrumView::set3DSpectrogramDepth(int depth)
         m_redrawAll = true;
     }
     update();
+}
+
+void GLSpectrumView::set3DSpectrogramView(const SpectrumSettings::Spectrogram3DView& view)
+{
+    m_glShaderSpectrogram.setView(view);
+    update();
+}
+
+void GLSpectrumView::report3DSpectrogramView()
+{
+    if (m_messageQueueToGUI) {
+        m_messageQueueToGUI->push(MsgSpectrogram3DView::create(m_glShaderSpectrogram.getView()));
+    }
 }
 
 void GLSpectrumView::setSpectrumColor(QRgb color)
@@ -4618,6 +4632,9 @@ bool GLSpectrumView::event(QEvent* event)
                 }
                 if (pinch->state() == Qt::GestureFinished)
                 {
+                    if (m_pinching3D) {
+                        report3DSpectrogramView();
+                    }
                     m_pinching = false;
                     m_pinching3D = false;
                 }
@@ -5124,6 +5141,9 @@ void GLSpectrumView::mousePressEvent(QMouseEvent* event)
 
 void GLSpectrumView::mouseReleaseEvent(QMouseEvent*)
 {
+    if (m_pan3DSpectrogram || m_rotate3DSpectrogram || m_scaleZ3DSpectrogram) {
+        report3DSpectrogramView();
+    }
     m_scrollFrequency = false;
     m_pan3DSpectrogram = false;
     m_rotate3DSpectrogram = false;
@@ -5156,6 +5176,7 @@ void GLSpectrumView::wheelEvent(QWheelEvent *event)
         int delta = event->angleDelta().y();
         if (delta != 0) {
             m_glShaderSpectrogram.verticalAngle(-5.0*delta/120.0);
+            report3DSpectrogramView();
         }
         repaint(); // Force repaint in case acquisition is stopped
     }
@@ -6075,6 +6096,7 @@ bool GLSpectrumView::eventFilter(QObject *object, QEvent *event)
             m_glShaderSpectrogram.userScaleZ(0.0f);
             break;
         }
+        report3DSpectrogramView();
         repaint(); // Force repaint in case acquisition is stopped
         return true;
     }

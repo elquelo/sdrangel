@@ -121,6 +121,28 @@ public:
         ShowAll
     };
 
+    //! Camera, light and Z scale of the 3D spectrogram, kept so that the view is restored at the next start
+    struct Spectrogram3DView
+    {
+        float m_translateX = 0.0f;
+        float m_translateY = 0.0f;
+        float m_translateZ = 0.0f;
+        float m_rotX = -45.0f;
+        float m_rotY = 0.0f;
+        float m_rotZ = 0.0f;
+        float m_userScaleZ = 1.0f;      //!< Scale of the power (Z) axis set by the user
+        float m_verticalAngle = 45.0f;  //!< Vertical field of view in degrees (zoom)
+        float m_lightTranslateX = 0.0f;
+        float m_lightTranslateY = 0.0f;
+        float m_lightTranslateZ = 0.0f;
+        float m_lightRotX = 0.0f;
+        float m_lightRotY = 0.0f;
+        float m_lightRotZ = 0.0f;
+
+        QByteArray serialize() const;
+        bool deserialize(const QByteArray& data);
+    };
+
     struct SpectrumMemory {
         QList<Real> m_spectrum;
         bool m_display;
@@ -170,6 +192,7 @@ public:
 	CalibrationInterpolationMode m_calibrationInterpMode; //!< How is power interpolated between calibration points
     SpectrogramStyle m_3DSpectrogramStyle;
     int m_3DSpectrogramDepth;    //!< Number of spectra displayed in the 3D spectrogram
+    Spectrogram3DView m_3DSpectrogramView; //!< Camera, light and Z scale of the 3D spectrogram
     QString m_colorMap;
     SpectrumStyle m_spectrumStyle;
     Measurement m_measurement;
