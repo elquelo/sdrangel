@@ -686,6 +686,45 @@ void GLShaderSpectrogram::reset()
     setPerspective();
 }
 
+SpectrumSettings::Spectrogram3DView GLShaderSpectrogram::getView() const
+{
+    SpectrumSettings::Spectrogram3DView view;
+    view.m_translateX = m_translateX;
+    view.m_translateY = m_translateY;
+    view.m_translateZ = m_translateZ;
+    view.m_rotateX = m_rotX;
+    view.m_rotateY = m_rotY;
+    view.m_rotateZ = m_rotZ;
+    view.m_userScaleZ = m_userScaleZ;
+    view.m_verticalAngle = m_verticalAngle;
+    view.m_lightTranslateX = m_lightTranslateX;
+    view.m_lightTranslateY = m_lightTranslateY;
+    view.m_lightTranslateZ = m_lightTranslateZ;
+    view.m_lightRotateX = m_lightRotX;
+    view.m_lightRotateY = m_lightRotY;
+    view.m_lightRotateZ = m_lightRotZ;
+    return view;
+}
+
+void GLShaderSpectrogram::setView(const SpectrumSettings::Spectrogram3DView& view)
+{
+    m_translateX = view.m_translateX;
+    m_translateY = view.m_translateY;
+    m_translateZ = view.m_translateZ;
+    m_rotX = view.m_rotateX;
+    m_rotY = view.m_rotateY;
+    m_rotZ = view.m_rotateZ;
+    m_userScaleZ = view.m_userScaleZ;
+    m_verticalAngle = view.m_verticalAngle;
+    m_lightTranslateX = view.m_lightTranslateX;
+    m_lightTranslateY = view.m_lightTranslateY;
+    m_lightTranslateZ = view.m_lightTranslateZ;
+    m_lightRotX = view.m_lightRotateX;
+    m_lightRotY = view.m_lightRotateY;
+    m_lightRotZ = view.m_lightRotateZ;
+    setPerspective();
+}
+
 void GLShaderSpectrogram::setAspectRatio(float aspectRatio)
 {
     m_aspectRatio = aspectRatio;

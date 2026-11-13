@@ -20,6 +20,8 @@
 #include <QBuffer>
 #include <QDataStream>
 
+#include <algorithm>
+
 #include "SWGGLSpectrum.h"
 
 #include "util/simpleserializer.h"
@@ -71,6 +73,7 @@ void SpectrumSettings::resetToDefaults()
     m_3DSpectrogramStyle = Outline;
     m_3DSpectrogramDepth = m_3DSpectrogramDefaultDepth;
     m_3DSpectrogramSmooth = true;
+    m_3DSpectrogramView = Spectrogram3DView();
     m_colorMap = "Angel";
     m_spectrumStyle = Line;
     m_measurement = MeasurementNone;
@@ -125,6 +128,78 @@ void SpectrumSettings::validateSpectrumMemories()
 		memory.m_color = QColor(Qt::cyan).darker().rgb();
 		m_spectrumMemory.append(memory);
 	}
+}
+
+QByteArray SpectrumSettings::Spectrogram3DView::serialize() const
+{
+	SimpleSerializer s(1);
+
+	s.writeFloat(1, m_translateX);
+	s.writeFloat(2, m_translateY);
+	s.writeFloat(3, m_translateZ);
+	s.writeFloat(4, m_rotateX);
+	s.writeFloat(5, m_rotateY);
+	s.writeFloat(6, m_rotateZ);
+	s.writeFloat(7, m_userScaleZ);
+	s.writeFloat(8, m_verticalAngle);
+	s.writeFloat(9, m_lightTranslateX);
+	s.writeFloat(10, m_lightTranslateY);
+	s.writeFloat(11, m_lightTranslateZ);
+	s.writeFloat(12, m_lightRotateX);
+	s.writeFloat(13, m_lightRotateY);
+	s.writeFloat(14, m_lightRotateZ);
+
+	return s.final();
+}
+
+bool SpectrumSettings::Spectrogram3DView::deserialize(const QByteArray& data)
+{
+	SimpleDeserializer d(data);
+
+	if (!d.isValid() || (d.getVersion() != 1))
+	{
+		*this = Spectrogram3DView();
+		return false;
+	}
+
+	Spectrogram3DView defaults;
+
+	d.readFloat(1, &m_translateX, defaults.m_translateX);
+	d.readFloat(2, &m_translateY, defaults.m_translateY);
+	d.readFloat(3, &m_translateZ, defaults.m_translateZ);
+	d.readFloat(4, &m_rotateX, defaults.m_rotateX);
+	d.readFloat(5, &m_rotateY, defaults.m_rotateY);
+	d.readFloat(6, &m_rotateZ, defaults.m_rotateZ);
+	d.readFloat(7, &m_userScaleZ, defaults.m_userScaleZ);
+	d.readFloat(8, &m_verticalAngle, defaults.m_verticalAngle);
+	d.readFloat(9, &m_lightTranslateX, defaults.m_lightTranslateX);
+	d.readFloat(10, &m_lightTranslateY, defaults.m_lightTranslateY);
+	d.readFloat(11, &m_lightTranslateZ, defaults.m_lightTranslateZ);
+	d.readFloat(12, &m_lightRotateX, defaults.m_lightRotateX);
+	d.readFloat(13, &m_lightRotateY, defaults.m_lightRotateY);
+	d.readFloat(14, &m_lightRotateZ, defaults.m_lightRotateZ);
+	m_userScaleZ = std::max(0.0f, m_userScaleZ);
+	m_verticalAngle = std::min(179.0f, std::max(1.0f, m_verticalAngle));
+
+	return true;
+}
+
+bool SpectrumSettings::Spectrogram3DView::operator==(const Spectrogram3DView& other) const
+{
+	return (m_translateX == other.m_translateX)
+		&& (m_translateY == other.m_translateY)
+		&& (m_translateZ == other.m_translateZ)
+		&& (m_rotateX == other.m_rotateX)
+		&& (m_rotateY == other.m_rotateY)
+		&& (m_rotateZ == other.m_rotateZ)
+		&& (m_userScaleZ == other.m_userScaleZ)
+		&& (m_verticalAngle == other.m_verticalAngle)
+		&& (m_lightTranslateX == other.m_lightTranslateX)
+		&& (m_lightTranslateY == other.m_lightTranslateY)
+		&& (m_lightTranslateZ == other.m_lightTranslateZ)
+		&& (m_lightRotateX == other.m_lightRotateX)
+		&& (m_lightRotateY == other.m_lightRotateY)
+		&& (m_lightRotateZ == other.m_lightRotateZ);
 }
 
 QByteArray SpectrumSettings::serialize() const
@@ -195,6 +270,7 @@ QByteArray SpectrumSettings::serialize() const
 	s.writeU32(64, m_spectrumColor);
 	s.writeS32(65, m_3DSpectrogramDepth);
 	s.writeBool(66, m_3DSpectrogramSmooth);
+	s.writeBlob(67, m_3DSpectrogramView.serialize());
 
     s.writeS32(100, m_histogramMarkers.size());
 
@@ -289,6 +365,8 @@ bool SpectrumSettings::deserialize(const QByteArray& data)
         d.readS32(65, &m_3DSpectrogramDepth, m_3DSpectrogramDefaultDepth);
         m_3DSpectrogramDepth = clamp3DSpectrogramDepth(m_3DSpectrogramDepth);
         d.readBool(66, &m_3DSpectrogramSmooth, true);
+        d.readBlob(67, &bytetmp);
+        m_3DSpectrogramView.deserialize(bytetmp);
         d.readString(33, &m_colorMap, "Angel");
         d.readS32(34, (int*)&m_spectrumStyle, (int)Line);
         d.readS32(35, (int*)&m_measurement, (int)MeasurementNone);

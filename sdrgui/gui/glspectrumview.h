@@ -183,6 +183,26 @@ public:
         { }
     };
 
+    //! Sent to the GUI when the user has changed the camera or the light of the 3D spectrogram
+    class MsgReport3DSpectrogramView : public Message {
+        MESSAGE_CLASS_DECLARATION
+
+    public:
+        const SpectrumSettings::Spectrogram3DView& getView() const { return m_view; }
+
+        static MsgReport3DSpectrogramView* create(const SpectrumSettings::Spectrogram3DView& view) {
+            return new MsgReport3DSpectrogramView(view);
+        }
+
+    private:
+        SpectrumSettings::Spectrogram3DView m_view;
+
+        MsgReport3DSpectrogramView(const SpectrumSettings::Spectrogram3DView& view) :
+            Message(),
+            m_view(view)
+        { }
+    };
+
     GLSpectrumView(QWidget* parent = nullptr);
     virtual ~GLSpectrumView();
 
@@ -205,6 +225,7 @@ public:
     void set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style);
     void set3DSpectrogramDepth(int depth);
     void set3DSpectrogramSmooth(bool smooth);
+    void set3DSpectrogramView(const SpectrumSettings::Spectrogram3DView& view);
     void setSpectrumColor(QRgb color);
     void setColorMapName(const QString &colorMapName);
     void setSpectrumStyle(SpectrumSettings::SpectrumStyle style);
@@ -409,6 +430,7 @@ private:
     int m_3DSpectrogramTexturePos;
     int m_3DSpectrogramDepth;           //!< Number of spectra (rows in time) displayed in the 3D spectrogram
     bool m_3DSpectrogramSmooth;         //!< Scroll the 3D spectrogram continuously between new spectra
+    SpectrumSettings::Spectrogram3DView m_3DSpectrogramView; //!< Last camera and light reported to the GUI
     float m_3DSpectrogramLag;           //!< Rows by which the displayed front edge trails the newest row (0 to 2), makes the surface glide
     double m_3DSpectrogramRowPeriodMs;  //!< Smoothed time between two new rows
     double m_3DSpectrogramGlideLastMs;  //!< Time of the last glide update
@@ -547,6 +569,7 @@ private:
     void update3DSpectrogram(const Real *spectrum, int fftSize, int fftMin, int nbBins);
     void update3DSpectrogramGlide(int newRows);
     int getDisplayedTimeRows() const;
+    void report3DSpectrogramView();
     void updateHistogram(const Real *spectrum, int fftMin, int nbBins);
 
     void initializeGL();

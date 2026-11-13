@@ -405,6 +405,7 @@ void GLSpectrumGUI::applySpectrumSettings()
     m_glSpectrum->set3DSpectrogramStyle(m_settings.m_3DSpectrogramStyle);
     m_glSpectrum->set3DSpectrogramDepth(m_settings.m_3DSpectrogramDepth);
     m_glSpectrum->set3DSpectrogramSmooth(m_settings.m_3DSpectrogramSmooth);
+    m_glSpectrum->set3DSpectrogramView(m_settings.m_3DSpectrogramView);
     m_glSpectrum->setSpectrumColor(m_settings.m_spectrumColor);
     m_glSpectrum->setColorMapName(m_settings.m_colorMap);
     m_glSpectrum->setSpectrumStyle(m_settings.m_spectrumStyle);
@@ -1169,6 +1170,12 @@ bool GLSpectrumGUI::handleMessage(const Message& message)
         if (m_markersDialog) {
             m_markersDialog->updateWaterfallMarkersDisplay();
         }
+        return true;
+    }
+    else if (GLSpectrumView::MsgReport3DSpectrogramView::match(message))
+    {
+        const GLSpectrumView::MsgReport3DSpectrogramView& report = (const GLSpectrumView::MsgReport3DSpectrogramView&) message;
+        m_settings.m_3DSpectrogramView = report.getView();
         return true;
     }
     else if (GLSpectrumView::MsgFrequencyZooming::match(message))
