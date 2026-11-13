@@ -213,6 +213,10 @@ void GLSpectrumGUI::displaySettings()
     ui->spectrogramStyle->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls == SpectrumSettings::ShowAll));
     ui->spectrogramDepth->setValue(m_settings.m_3DSpectrogramDepth);
     ui->spectrogramDepth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls == SpectrumSettings::ShowAll));
+    ui->spectrogramSmooth->blockSignals(true);
+    ui->spectrogramSmooth->setChecked(m_settings.m_3DSpectrogramSmooth);
+    ui->spectrogramSmooth->blockSignals(false);
+    ui->spectrogramSmooth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls == SpectrumSettings::ShowAll));
     ui->colorMap->setCurrentText(m_settings.m_colorMap);
     ui->currentLine->blockSignals(true);
     ui->currentFill->blockSignals(true);
@@ -320,6 +324,7 @@ void GLSpectrumGUI::displayControls()
     ui->spectrogram->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->spectrogramStyle->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll && m_settings.m_display3DSpectrogram);
     ui->spectrogramDepth->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll && m_settings.m_display3DSpectrogram);
+    ui->spectrogramSmooth->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll && m_settings.m_display3DSpectrogram);
     ui->fftWindow->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->fftSize->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowStandard);
     ui->fftOverlap->setVisible(m_settings.m_showControls >= SpectrumSettings::ShowAll);
@@ -399,6 +404,7 @@ void GLSpectrumGUI::applySpectrumSettings()
     m_glSpectrum->setDisplay3DSpectrogram(m_settings.m_display3DSpectrogram);
     m_glSpectrum->set3DSpectrogramStyle(m_settings.m_3DSpectrogramStyle);
     m_glSpectrum->set3DSpectrogramDepth(m_settings.m_3DSpectrogramDepth);
+    m_glSpectrum->set3DSpectrogramSmooth(m_settings.m_3DSpectrogramSmooth);
     m_glSpectrum->setSpectrumColor(m_settings.m_spectrumColor);
     m_glSpectrum->setColorMapName(m_settings.m_colorMap);
     m_glSpectrum->setSpectrumStyle(m_settings.m_spectrumStyle);
@@ -787,6 +793,12 @@ void GLSpectrumGUI::on_spectrogramDepth_valueChanged(int value)
     applySettings();
 }
 
+void GLSpectrumGUI::on_spectrogramSmooth_toggled(bool checked)
+{
+    m_settings.m_3DSpectrogramSmooth = checked;
+    applySettings();
+}
+
 void GLSpectrumGUI::on_colorMap_currentIndexChanged(int index)
 {
     (void) index;
@@ -817,6 +829,7 @@ void GLSpectrumGUI::on_spectrogram_toggled(bool checked)
     }
     ui->spectrogramStyle->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls >= SpectrumSettings::ShowAll));
     ui->spectrogramDepth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls >= SpectrumSettings::ShowAll));
+    ui->spectrogramSmooth->setVisible(m_settings.m_display3DSpectrogram && (m_settings.m_showControls >= SpectrumSettings::ShowAll));
     applySettings();
 }
 

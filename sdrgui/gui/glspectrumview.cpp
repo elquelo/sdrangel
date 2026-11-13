@@ -122,6 +122,7 @@ GLSpectrumView::GLSpectrumView(QWidget* parent) :
     m_3DSpectrogramTextureHeight(-1),
     m_3DSpectrogramTexturePos(0),
     m_3DSpectrogramDepth(SpectrumSettings::m_3DSpectrogramDefaultDepth),
+    m_3DSpectrogramSmooth(true),
     m_3DSpectrogramLag(1.0f),
     m_3DSpectrogramRowPeriodMs(100.0),
     m_3DSpectrogramGlideLastMs(0.0),
@@ -481,6 +482,19 @@ void GLSpectrumView::set3DSpectrogramDepth(int depth)
         m_3DSpectrogramDepth = depth;
         m_changesPending = true;
         m_redrawAll = true;
+    }
+    update();
+}
+
+void GLSpectrumView::set3DSpectrogramSmooth(bool smooth)
+{
+    QMutexLocker mutexLocker(&m_mutex);
+
+    if (smooth != m_3DSpectrogramSmooth)
+    {
+        m_3DSpectrogramSmooth = smooth;
+        m_3DSpectrogramLag = 1.0f;
+        m_3DSpectrogramRefilled = true; // Timing of the new rows is not known after the glide was off
     }
     update();
 }
@@ -1660,7 +1674,12 @@ void GLSpectrumView::paintGL()
         }
 
         m_3DSpectrogramBufferPos = 0;
-        update3DSpectrogramGlide(newRows);
+
+        if (m_3DSpectrogramSmooth) {
+            update3DSpectrogramGlide(newRows);
+        } else {
+            m_3DSpectrogramLag = 1.0f; // The front edge is the newest row: the surface moves by whole rows
+        }
 
         // Temporarily reduce viewport to waterfall area so anything outside is clipped
         if (window()->windowHandle()) {
@@ -5608,7 +5627,7 @@ void GLSpectrumView::tick()
         m_displayChanged = false;
         update();
     }
-    else if (m_display3DSpectrogram)
+    else if (m_display3DSpectrogram && m_3DSpectrogramSmooth)
     {
         update(); // The 3D spectrogram scrolls continuously between new spectra
     }

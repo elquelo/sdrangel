@@ -114,6 +114,7 @@ private slots:
 	void on_stroke_valueChanged(int index);
     void on_spectrogramStyle_currentIndexChanged(int index);
     void on_spectrogramDepth_valueChanged(int value);
+    void on_spectrogramSmooth_toggled(bool checked);
     void on_colorMap_currentIndexChanged(int index);
 	void on_gridIntensity_valueChanged(int index);
     void on_truncateScale_toggled(bool checked);

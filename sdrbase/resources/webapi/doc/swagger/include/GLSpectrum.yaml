@@ -172,6 +172,11 @@ GLSpectrum:
       type: integer
       minimum: 16
       maximum: 1024
+    spectrogramSmooth:
+      description: Scroll the 3D spectrogram continuously between new spectra (1 for yes, 0 for no).
+      type: integer
+      minimum: 0
+      maximum: 1
     truncateFreqScale:
       description: Truncate the frequency scale to the displayed span (1 for yes, 0 for no).
       type: integer

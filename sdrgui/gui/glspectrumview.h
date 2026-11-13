@@ -204,6 +204,7 @@ public:
     void setDisplay3DSpectrogram(bool display);
     void set3DSpectrogramStyle(SpectrumSettings::SpectrogramStyle style);
     void set3DSpectrogramDepth(int depth);
+    void set3DSpectrogramSmooth(bool smooth);
     void setSpectrumColor(QRgb color);
     void setColorMapName(const QString &colorMapName);
     void setSpectrumStyle(SpectrumSettings::SpectrumStyle style);
@@ -407,6 +408,7 @@ private:
     int m_3DSpectrogramTextureHeight;
     int m_3DSpectrogramTexturePos;
     int m_3DSpectrogramDepth;           //!< Number of spectra (rows in time) displayed in the 3D spectrogram
+    bool m_3DSpectrogramSmooth;         //!< Scroll the 3D spectrogram continuously between new spectra
     float m_3DSpectrogramLag;           //!< Rows by which the displayed front edge trails the newest row (0 to 2), makes the surface glide
     double m_3DSpectrogramRowPeriodMs;  //!< Smoothed time between two new rows
     double m_3DSpectrogramGlideLastMs;  //!< Time of the last glide update
