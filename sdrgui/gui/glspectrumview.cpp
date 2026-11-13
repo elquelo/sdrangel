@@ -65,6 +65,7 @@ MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportCalibrationShift, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportHistogramMarkersChange, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReportWaterfallMarkersChange, Message)
 MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgFrequencyZooming, Message)
+MESSAGE_CLASS_DEFINITION(GLSpectrumView::MsgReport3DSpectrogramView, Message)
 
 const float GLSpectrumView::m_maxFrequencyZoom = 50.0f;
 const float GLSpectrumView::m_annotationMarkerHeight = 20.0f;
@@ -497,6 +498,30 @@ void GLSpectrumView::set3DSpectrogramSmooth(bool smooth)
         m_3DSpectrogramRefilled = true; // Timing of the new rows is not known after the glide was off
     }
     update();
+}
+
+void GLSpectrumView::set3DSpectrogramView(const SpectrumSettings::Spectrogram3DView& view)
+{
+    QMutexLocker mutexLocker(&m_mutex);
+
+    if (view != m_3DSpectrogramView)
+    {
+        m_3DSpectrogramView = view;
+        m_glShaderSpectrogram.setView(view);
+    }
+    update();
+}
+
+// Tell the GUI the camera or the light of the 3D spectrogram has changed, so that it is saved with the settings
+void GLSpectrumView::report3DSpectrogramView()
+{
+    const SpectrumSettings::Spectrogram3DView view = m_glShaderSpectrogram.getView();
+
+    if ((view != m_3DSpectrogramView) && m_messageQueueToGUI)
+    {
+        m_3DSpectrogramView = view;
+        m_messageQueueToGUI->push(MsgReport3DSpectrogramView::create(view));
+    }
 }
 
 void GLSpectrumView::setSpectrumColor(QRgb color)
@@ -4639,6 +4664,7 @@ bool GLSpectrumView::event(QEvent* event)
                 {
                     m_pinching = false;
                     m_pinching3D = false;
+                    report3DSpectrogramView();
                 }
             }
             return true;
@@ -5147,6 +5173,7 @@ void GLSpectrumView::mouseReleaseEvent(QMouseEvent*)
     m_pan3DSpectrogram = false;
     m_rotate3DSpectrogram = false;
     m_scaleZ3DSpectrogram = false;
+    report3DSpectrogramView();
     if (m_cursorState == CSSplitterMoving)
     {
         releaseMouse();
@@ -5175,6 +5202,7 @@ void GLSpectrumView::wheelEvent(QWheelEvent *event)
         int delta = event->angleDelta().y();
         if (delta != 0) {
             m_glShaderSpectrogram.verticalAngle(-5.0*delta/120.0);
+            report3DSpectrogramView();
         }
         repaint(); // Force repaint in case acquisition is stopped
     }
@@ -6162,6 +6190,7 @@ bool GLSpectrumView::eventFilter(QObject *object, QEvent *event)
             m_glShaderSpectrogram.userScaleZ(0.0f);
             break;
         }
+        report3DSpectrogramView();
         repaint(); // Force repaint in case acquisition is stopped
         return true;
     }

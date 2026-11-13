@@ -83,6 +83,30 @@ public:
         Shaded
     };
 
+    //! Camera and light of the 3D spectrogram, as set by the user with the mouse and the keyboard
+    struct Spectrogram3DView
+    {
+        float m_translateX = 0.0f;
+        float m_translateY = 0.0f;
+        float m_translateZ = 0.0f;
+        float m_rotateX = -45.0f;
+        float m_rotateY = 0.0f;
+        float m_rotateZ = 0.0f;
+        float m_userScaleZ = 1.0f;     //!< Scaling of the power axis (0 flattens the surface)
+        float m_verticalAngle = 45.0f; //!< Vertical angle of the perspective (degrees)
+        float m_lightTranslateX = 0.0f;
+        float m_lightTranslateY = 0.0f;
+        float m_lightTranslateZ = 0.0f;
+        float m_lightRotateX = 0.0f;
+        float m_lightRotateY = 0.0f;
+        float m_lightRotateZ = 0.0f;
+
+        QByteArray serialize() const;
+        bool deserialize(const QByteArray& data);
+        bool operator==(const Spectrogram3DView& other) const;
+        bool operator!=(const Spectrogram3DView& other) const { return !(*this == other); }
+    };
+
     enum SpectrumStyle
     {
         Line,
@@ -170,6 +194,7 @@ public:
 	CalibrationInterpolationMode m_calibrationInterpMode; //!< How is power interpolated between calibration points
     SpectrogramStyle m_3DSpectrogramStyle;
     int m_3DSpectrogramDepth;    //!< Number of spectra displayed in the 3D spectrogram
+    Spectrogram3DView m_3DSpectrogramView; //!< Camera and light of the 3D spectrogram as set by the user
     bool m_3DSpectrogramSmooth;  //!< Scroll the 3D spectrogram continuously between new spectra (costs a repaint at every refresh)
     QString m_colorMap;
     SpectrumStyle m_spectrumStyle;

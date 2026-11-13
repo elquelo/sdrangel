@@ -59,6 +59,8 @@ public:
     void setScaleZ(float factor);
     void userScaleZ(float factor);
     void reset();
+    SpectrumSettings::Spectrogram3DView getView() const;
+    void setView(const SpectrumSettings::Spectrogram3DView& view);
     void setAspectRatio(float aspectRatio);
     void verticalAngle(float degrees);
     void lightTranslateX(float distance);
